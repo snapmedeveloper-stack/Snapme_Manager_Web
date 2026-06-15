@@ -67,7 +67,6 @@ const Timeline = ({ orgId }) => {
   const [hoveredSlot, setHoveredSlot] = useState(null);
   const [dragState, setDragState] = useState(null);
   const [clickIntent, setClickIntent] = useState(null);
-  const [isTouchDragging, setIsTouchDragging] = useState(false);
   
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -497,16 +496,6 @@ const Timeline = ({ orgId }) => {
   // Hover Slot Finder
   const handleTrackMove = (e, studioId) => {
     updateHoveredSlot(e.clientX, e.currentTarget, studioId);
-  };
-  const handleTrackTouchMove = (e, studioId) => {
-    setIsTouchDragging(true);
-    if (e.touches && e.touches.length > 0) {
-      updateHoveredSlot(e.touches[0].clientX, e.currentTarget, studioId);
-    }
-  };
-
-  const handleTrackTouchEnd = () => {
-    setIsTouchDragging(false);
   };
   const openAddModal = (e) => {
     e.stopPropagation();
@@ -1017,7 +1006,7 @@ const Timeline = ({ orgId }) => {
         </div>
 
         {/* Tracks Grid Area */}
-        <div className="timeline-tracks" style={{ flex: 1, display: 'flex', overflowY: (isTouchDragging || dragState) ? 'hidden' : 'auto', overflowX: 'hidden', alignItems: 'flex-start' }}>
+        <div className="timeline-tracks" style={{ flex: 1, display: 'flex', overflowY: 'auto', overflowX: 'hidden', alignItems: 'flex-start' }}>
           
           {/* Left Panel Labels */}
           <div className="timeline-left-panel" style={{ overflowY: 'visible' }}>
@@ -1057,9 +1046,6 @@ const Timeline = ({ orgId }) => {
                 <div 
                   key={studio.id} className="timeline-track-row timeline-track-container" style={{ width: TRACK_WIDTH }}
                   onMouseMove={(e) => handleTrackMove(e, studio.id)}
-                  onTouchMove={(e) => handleTrackTouchMove(e, studio.id)}
-                  onTouchEnd={handleTrackTouchEnd}
-                  onTouchCancel={handleTrackTouchEnd}
                   onClick={(e) => handleTrackClick(e, studio.id)}
                   onMouseEnter={() => { if (dragState && dragState.type === 'move') setDragState(s => ({...s, targetStudio: studio.id})) }}
                 >
@@ -1069,7 +1055,15 @@ const Timeline = ({ orgId }) => {
                   {dragState && dragState.targetStudio === studio.id && dragState.originalStudio !== studio.id && bookings.filter(b => b.id === dragState.id).map(renderBooking)}
                   
                   {hoveredSlot && hoveredSlot.studio === studio.id && !dragState && !clickIntent && (
-                     <div className="timeline-add-indicator" style={{ left: hoveredSlot.x }}>
+                     <div 
+                        className="timeline-add-indicator" 
+                        style={{ left: hoveredSlot.x, touchAction: 'none' }}
+                        onTouchMove={(e) => {
+                           if (e.touches && e.touches.length > 0) {
+                              updateHoveredSlot(e.touches[0].clientX, e.currentTarget.parentElement, studio.id);
+                           }
+                        }}
+                     >
                         <div className="timeline-add-time-badge">{`${Math.floor(hoveredSlot.min / 60) + START_HOUR}:${(hoveredSlot.min % 60).toString().padStart(2, '0')}`}</div>
                         <div className="timeline-add-btn" onClick={(e) => { setIsModalPhotobooth(false); openAddModal(e); }}>
                            <Plus size={14} />
@@ -1089,9 +1083,6 @@ const Timeline = ({ orgId }) => {
                 <div 
                   key={pb.id} className="timeline-track-row timeline-track-container" style={{ width: TRACK_WIDTH, background: '#f8fafc' }}
                   onMouseMove={(e) => handleTrackMove(e, pb.id)}
-                  onTouchMove={(e) => handleTrackTouchMove(e, pb.id)}
-                  onTouchEnd={handleTrackTouchEnd}
-                  onTouchCancel={handleTrackTouchEnd}
                   onClick={(e) => handleTrackClick(e, pb.id)}
                   onMouseEnter={() => { if (dragState && dragState.type === 'move') setDragState(s => ({...s, targetStudio: pb.id})) }}
                 >
@@ -1101,7 +1092,15 @@ const Timeline = ({ orgId }) => {
                   {dragState && dragState.targetStudio === pb.id && dragState.originalStudio !== pb.id && bookings.filter(b => b.id === dragState.id).map(renderBooking)}
                   
                   {hoveredSlot && hoveredSlot.studio === pb.id && !dragState && !clickIntent && (
-                     <div className="timeline-add-indicator" style={{ left: hoveredSlot.x }}>
+                     <div 
+                        className="timeline-add-indicator" 
+                        style={{ left: hoveredSlot.x, touchAction: 'none' }}
+                        onTouchMove={(e) => {
+                           if (e.touches && e.touches.length > 0) {
+                              updateHoveredSlot(e.touches[0].clientX, e.currentTarget.parentElement, pb.id);
+                           }
+                        }}
+                     >
                         <div className="timeline-add-time-badge">{`${Math.floor(hoveredSlot.min / 60) + START_HOUR}:${(hoveredSlot.min % 60).toString().padStart(2, '0')}`}</div>
                         <div className="timeline-add-btn" onClick={(e) => { setIsModalPhotobooth(true); openAddModal(e); }}>
                            <Plus size={14} />
