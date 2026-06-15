@@ -458,53 +458,15 @@ const Timeline = ({ orgId }) => {
     };
   }, [dragState, bookings, orgId]);
 
-  // Click/Tap handler for blank track space (touch-friendly adding)
-  const handleTrackClick = (e, studioId) => {
+  const updateHoveredSlot = (clientX, currentTarget, studioId) => {
     if (dragState || clickIntent) return;
-    
-    // Only proceed if clicking on the track itself or background grid line, not a booking card
-    if (e.target !== e.currentTarget && !e.target.classList.contains('timeline-track-bg-line')) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let clickedMin = Math.round((x / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
-
-    if (clickedMin < 0 || clickedMin > TOTAL_HOURS * 60) return;
-
-    const studioBookings = bookings.filter(b => b.studio === studioId).map(b => {
-      const bMin = (b.startHour - START_HOUR) * 60 + b.startMin;
-      return { start: bMin, end: bMin + b.duration };
-    });
-
-    if (studioBookings.some(b => clickedMin >= b.start && clickedMin < b.end)) return;
-
-    const h = Math.floor(clickedMin / 60) + START_HOUR;
-    const m = clickedMin % 60;
-
-    setModalSlot({ studio: studioId, min: clickedMin });
-    setIsModalPhotobooth(photobooths.some(p => p.id === studioId));
-    setModalForm({ 
-      customerName: '', 
-      waNumber: '', 
-      package: '', 
-      addOns: {}, 
-      startHour: h, 
-      startMin: m 
-    });
-    setModalError('');
-    setIsModalOpen(true);
-  };
-
-  // Hover Slot Finder
-  const handleTrackMove = (e, studio) => {
-    if (dragState || clickIntent) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const rect = currentTarget.getBoundingClientRect();
+    const x = clientX - rect.left;
     let snappedMin = Math.round((x / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
 
     if (snappedMin < 0 || snappedMin > TOTAL_HOURS * 60) { setHoveredSlot(null); return; }
 
-    const studioBookings = bookings.filter(b => b.studio === studio).map(b => {
+    const studioBookings = bookings.filter(b => b.studio === studioId).map(b => {
       const bMin = (b.startHour - START_HOUR) * 60 + b.startMin;
       return { start: bMin, end: bMin + b.duration };
     });
@@ -518,9 +480,27 @@ const Timeline = ({ orgId }) => {
     }
 
     if (freeEnd - freeStart >= MIN_GAP_MINUTES && snappedMin + MIN_GAP_MINUTES <= freeEnd) {
-      setHoveredSlot({ studio, min: snappedMin, x: snappedMin * PIXELS_PER_MINUTE });
+      setHoveredSlot({ studio: studioId, min: snappedMin, x: snappedMin * PIXELS_PER_MINUTE });
     } else {
       setHoveredSlot(null);
+    }
+  };
+
+  // Click/Tap handler for blank track space (touch-friendly adding)
+  const handleTrackClick = (e, studioId) => {
+    if (dragState || clickIntent) return;
+    if (e.target !== e.currentTarget && !e.target.classList.contains('timeline-track-bg-line')) return;
+    updateHoveredSlot(e.clientX, e.currentTarget, studioId);
+  };
+
+  // Hover Slot Finder
+  const handleTrackMove = (e, studioId) => {
+    updateHoveredSlot(e.clientX, e.currentTarget, studioId);
+  };
+
+  const handleTrackTouchMove = (e, studioId) => {
+    if (e.touches && e.touches.length > 0) {
+      updateHoveredSlot(e.touches[0].clientX, e.currentTarget, studioId);
     }
   };
 
@@ -1073,6 +1053,7 @@ const Timeline = ({ orgId }) => {
                 <div 
                   key={studio.id} className="timeline-track-row timeline-track-container" style={{ width: TRACK_WIDTH }}
                   onMouseMove={(e) => handleTrackMove(e, studio.id)}
+                  onTouchMove={(e) => handleTrackTouchMove(e, studio.id)}
                   onClick={(e) => handleTrackClick(e, studio.id)}
                   onMouseEnter={() => { if (dragState && dragState.type === 'move') setDragState(s => ({...s, targetStudio: studio.id})) }}
                 >
@@ -1102,6 +1083,7 @@ const Timeline = ({ orgId }) => {
                 <div 
                   key={pb.id} className="timeline-track-row timeline-track-container" style={{ width: TRACK_WIDTH, background: '#f8fafc' }}
                   onMouseMove={(e) => handleTrackMove(e, pb.id)}
+                  onTouchMove={(e) => handleTrackTouchMove(e, pb.id)}
                   onClick={(e) => handleTrackClick(e, pb.id)}
                   onMouseEnter={() => { if (dragState && dragState.type === 'move') setDragState(s => ({...s, targetStudio: pb.id})) }}
                 >
