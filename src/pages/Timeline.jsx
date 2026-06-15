@@ -921,13 +921,9 @@ const Timeline = ({ orgId }) => {
     <div className="page-enter timeline-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0px' }}>
       
       {/* Header Rekap / Bar Control */}
-      <div className="timeline-control-bar" style={{ 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        flexWrap: 'wrap', gap: '16px', background: 'var(--bg-surface)', padding: '12px 24px', 
-        borderBottom: '1px solid var(--border-color)'
-      }}>
+      <div className="timeline-control-bar">
         {/* Tab & Stats */}
-        <div className="timeline-control-bar-left" style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div className="timeline-control-bar-left">
           <div style={{ display: 'flex', background: 'var(--bg-color)', borderRadius: 8, padding: 4, border: '1px solid var(--border-color)' }}>
             {['Semua', 'Studio', 'Photobooth'].map(tab => (
               <button
@@ -949,7 +945,7 @@ const Timeline = ({ orgId }) => {
           <div className="timeline-control-bar-separator" style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
 
           {recapBookings.length > 0 ? (
-            <>
+            <div className="timeline-stats-group">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 17 }}>{recapBookings.length}</span>
                 <span style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Booking</span>
@@ -984,14 +980,14 @@ const Timeline = ({ orgId }) => {
                   {recapJam > 0 ? `${recapJam}j ` : ''}{recapSisaMnt}m
                 </strong> total
               </span>
-            </>
+            </div>
           ) : (
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>Jadwal Kosong</div>
           )}
         </div>
 
         {/* Right side controls */}
-        <div className="timeline-control-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="timeline-control-bar-right">
           <button
             onClick={handleRecap}
             className="btn btn-ghost"
@@ -1296,7 +1292,7 @@ const Timeline = ({ orgId }) => {
 
         return (
           <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) { setDetailBookingId(null); setDetailForm(null); } }}>
-            <div className="modal-content" style={{ width: 480 }}>
+            <div className="modal-content">
               <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 10, flexShrink: 0,
