@@ -1006,24 +1006,47 @@ a {
 
   /* Timeline Mobile Optimizations */
   .timeline-left-panel {
-    width: 100px !important;
+    width: 45px !important;
   }
 
   .timeline-header-left {
-    padding: 0 8px !important;
+    writing-mode: vertical-rl !important;
+    transform: rotate(180deg) !important;
+    padding: 0 4px !important;
+    justify-content: center !important;
+    text-align: center !important;
     font-size: 9px !important;
+    white-space: nowrap !important;
   }
 
   .timeline-track-label {
-    padding: 0 8px !important;
+    padding: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .timeline-track-label > span {
+    writing-mode: vertical-rl !important;
+    transform: rotate(180deg) !important;
+    white-space: nowrap !important;
+    max-height: 80px !important;
+    overflow: visible !important;
     font-size: 11px !important;
+    text-align: center !important;
+  }
+
+  .timeline-photobooth-divider {
+    writing-mode: vertical-rl !important;
+    transform: rotate(180deg) !important;
+    padding: 0 !important;
+    font-size: 8px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    white-space: nowrap !important;
   }
 
   .premiere-scrollbar-wrapper {
-    padding-left: 100px !important;
+    padding-left: 45px !important;
   }
 
   .timeline-track-row {

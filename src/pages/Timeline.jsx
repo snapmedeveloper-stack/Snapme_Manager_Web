@@ -1043,7 +1043,7 @@ const Timeline = ({ orgId }) => {
             ))}
             
             {photobooths.length > 0 && (
-              <div className="timeline-track-label" style={{ height: 33, display: 'flex', alignItems: 'center', background: 'var(--bg-color)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <div className="timeline-track-label timeline-photobooth-divider" style={{ height: 33, display: 'flex', alignItems: 'center', background: 'var(--bg-color)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 Photobooth
               </div>
             )}
