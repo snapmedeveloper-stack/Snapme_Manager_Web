@@ -100,6 +100,11 @@ a {
   flex-direction: column;
 }
 
+.main-content:has(.timeline-page-container) {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 .mobile-header {
   display: none;
 }
@@ -377,8 +382,6 @@ a {
   background: var(--bg-card);
   overflow: hidden;
   margin: 0;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
 }
 
 .timeline-header-row {
@@ -406,6 +409,13 @@ a {
   text-transform: uppercase;
   color: var(--text-muted);
   height: 100%;
+  gap: 8px;
+}
+.timeline-header-icon {
+  display: none;
+}
+.timeline-header-text {
+  display: inline;
 }
 
 .timeline-scroll-area {
@@ -1011,20 +1021,21 @@ a {
   }
 
   .timeline-header-left {
-    font-size: 0 !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    writing-mode: horizontal-tb !important;
-    transform: none !important;
+  }
+  .timeline-header-text {
+    display: none !important;
+  }
+  .timeline-header-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
   }
   .timeline-header-left::before {
-    content: "LYR" !important;
-    font-size: 9px !important;
-    font-weight: 800 !important;
-    color: var(--text-muted) !important;
-    letter-spacing: 0.5px !important;
+    display: none !important;
   }
 
   .timeline-track-label {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Calendar, Clipboard, Check, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clipboard, Check, RefreshCw, Layers } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, where, doc, deleteDoc, updateDoc, setDoc, writeBatch } from 'firebase/firestore';
 
@@ -871,13 +871,13 @@ const Timeline = ({ orgId }) => {
   const recapSisaMnt  = recapTotalMin % 60;
 
   return (
-    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0px' }}>
+    <div className="page-enter timeline-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0px' }}>
       
       {/* Header Rekap / Bar Control */}
       <div className="timeline-control-bar" style={{ 
-        margin: '0 0 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
         flexWrap: 'wrap', gap: '16px', background: 'var(--bg-surface)', padding: '12px 24px', 
-        border: '1px solid var(--border-color)', borderRadius: '12px'
+        borderBottom: '1px solid var(--border-color)'
       }}>
         {/* Tab & Stats */}
         <div className="timeline-control-bar-left" style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0, flexWrap: 'wrap' }}>
@@ -1016,7 +1016,10 @@ const Timeline = ({ orgId }) => {
         
         {/* Ruler Row */}
         <div className="timeline-header-row">
-          <div className="timeline-left-panel timeline-header-left">Layer Studio</div>
+          <div className="timeline-left-panel timeline-header-left">
+            <Layers size={14} className="timeline-header-icon" />
+            <span className="timeline-header-text">Layer Studio</span>
+          </div>
           <div className="timeline-scroll-area" ref={scrollRef} onScroll={handleMasterScroll}>
             <div className="timeline-ruler" style={{ width: TRACK_WIDTH }}>
               {hours.map(hour => (
