@@ -718,6 +718,10 @@ a {
 }
 
 /* ===== PREMIERE SCROLLBAR (ZOOM CONTROLLER) ===== */
+.premiere-scrollbar-wrapper {
+  padding-left: 160px;
+}
+
 .premiere-scrollbar-container {
   height: 14px;
   background: var(--bg-color);
@@ -998,6 +1002,57 @@ a {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  /* Timeline Mobile Optimizations */
+  .timeline-left-panel {
+    width: 100px !important;
+  }
+
+  .timeline-header-left {
+    padding: 0 8px !important;
+    font-size: 9px !important;
+  }
+
+  .timeline-track-label {
+    padding: 0 8px !important;
+  }
+
+  .timeline-track-label > span {
+    font-size: 11px !important;
+  }
+
+  .premiere-scrollbar-wrapper {
+    padding-left: 100px !important;
+  }
+
+  .timeline-track-row {
+    height: 96px !important;
+  }
+
+  .timeline-booking-block {
+    top: 6px !important;
+    bottom: 6px !important;
+    padding: 6px 8px !important;
+  }
+
+  .timeline-booking-block .booking-title {
+    font-size: 11.5px !important;
+  }
+
+  .timeline-booking-block .booking-time {
+    font-size: 9.5px !important;
+    margin-top: 2px !important;
+  }
+
+  .arrived-bar {
+    margin: 4px -8px -6px -8px !important;
+    width: calc(100% + 16px) !important;
+  }
+
+  .arrived-bar-btn {
+    padding: 4px 6px !important;
+    font-size: 9px !important;
   }
 }
 
