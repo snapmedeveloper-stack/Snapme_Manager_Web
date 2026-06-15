@@ -1012,7 +1012,7 @@ const Timeline = ({ orgId }) => {
       </div>
 
       {/* TIMELINE CONTAINER */}
-      <div className="timeline-wrapper" ref={wrapperRef} style={{ flex: 1, minHeight: 0, touchAction: 'pan-x' }} onMouseLeave={() => setHoveredSlot(null)}>
+      <div className="timeline-wrapper" ref={wrapperRef} style={{ flex: 1, minHeight: 0 }} onMouseLeave={() => setHoveredSlot(null)}>
         
         {/* Ruler Row */}
         <div className="timeline-header-row">

@@ -415,7 +415,7 @@ a {
   position: relative;
   display: flex;
   flex-direction: column;
-  touch-action: pan-x;
+  touch-action: auto;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -881,7 +881,7 @@ a {
   }
 
   .main-content {
-    padding: 16px !important;
+    padding: 0 !important;
   }
 
   .mobile-header {
@@ -1076,9 +1076,20 @@ a {
   .timeline-control-bar {
     padding: 10px 14px !important;
     gap: 10px !important;
-    margin-bottom: 12px !important;
+    margin: 0 0 8px 0 !important;
     flex-direction: column !important;
     align-items: stretch !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+  }
+
+  .timeline-wrapper {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
   }
 
   .timeline-control-bar-left {
