@@ -323,19 +323,64 @@ const Timeline = ({ orgId }) => {
         pushes: {}
       });
     }, 350);
-    setClickIntent({ timer, booking });
+    setClickIntent({ timer, booking, startX, startY: e.clientY, isTouch: false });
+  };
+
+  const handleBlockTouchStart = (e, booking) => {
+    e.stopPropagation();
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+    const min = (booking.startHour - START_HOUR) * 60 + booking.startMin;
+
+    const timer = setTimeout(() => {
+      setClickIntent(null);
+      setHoveredSlot(null);
+      setDragState({
+        id: booking.id, 
+        type: 'move', 
+        startX, 
+        initialMin: min, 
+        initialDuration: booking.duration,
+        originalStudio: booking.studio, 
+        targetStudio: booking.studio, 
+        currentMin: min, 
+        currentDuration: booking.duration, 
+        pushes: {}
+      });
+    }, 350);
+    setClickIntent({ timer, booking, startX, startY, isTouch: true });
   };
 
   useEffect(() => {
     if (!clickIntent) return;
-    const handleGlobalUpForClick = () => {
+    const handleGlobalMoveForClick = (e) => {
+       if (clickIntent.isTouch && e.touches) {
+          const dx = Math.abs(e.touches[0].clientX - clickIntent.startX);
+          const dy = Math.abs(e.touches[0].clientY - clickIntent.startY);
+          if (dx > 10 || dy > 10) {
+             clearTimeout(clickIntent.timer);
+             setClickIntent(null);
+          }
+       }
+    };
+    const handleGlobalUpForClick = (e) => {
+      if (clickIntent.isTouch && e.type === 'mouseup') return;
       clearTimeout(clickIntent.timer);
       setClickIntent(null);
       setDetailBookingId(clickIntent.booking.id);
       setDetailForm({ ...bookings.find(b => b.id === clickIntent.booking.id) });
     };
     window.addEventListener('mouseup', handleGlobalUpForClick);
-    return () => window.removeEventListener('mouseup', handleGlobalUpForClick);
+    window.addEventListener('touchend', handleGlobalUpForClick);
+    window.addEventListener('mousemove', handleGlobalMoveForClick);
+    window.addEventListener('touchmove', handleGlobalMoveForClick, { passive: true });
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalUpForClick);
+      window.removeEventListener('touchend', handleGlobalUpForClick);
+      window.removeEventListener('mousemove', handleGlobalMoveForClick);
+      window.removeEventListener('touchmove', handleGlobalMoveForClick);
+    };
   }, [clickIntent, bookings]);
 
   const handleResizeMouseDown = (e, booking) => {
@@ -357,14 +402,34 @@ const Timeline = ({ orgId }) => {
     });
   };
 
+  const handleResizeTouchStart = (e, booking) => {
+    e.stopPropagation();
+    const min = (booking.startHour - START_HOUR) * 60 + booking.startMin;
+    setHoveredSlot(null);
+    setDragState({
+      id: booking.id, 
+      type: 'resize', 
+      startX: e.touches[0].clientX, 
+      initialMin: min, 
+      initialDuration: booking.duration,
+      originalStudio: booking.studio, 
+      targetStudio: booking.studio, 
+      currentMin: min, 
+      currentDuration: booking.duration, 
+      pushes: {}
+    });
+  };
+
   useEffect(() => {
     if (!dragState) return;
     const PIX_MIN = zoomLevelRef.current / 60; 
 
     const handleGlobalMove = (e) => {
+      if (e.touches && e.cancelable) e.preventDefault();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       setDragState(prev => {
         if (!prev) return prev;
-        const deltaX = e.clientX - prev.startX;
+        const deltaX = clientX - prev.startX;
         const deltaMins = Math.round((deltaX / PIX_MIN) / SNAP_MINUTES) * SNAP_MINUTES;
 
         let newMin = prev.initialMin;
@@ -452,9 +517,13 @@ const Timeline = ({ orgId }) => {
 
     window.addEventListener('mousemove', handleGlobalMove);
     window.addEventListener('mouseup', handleGlobalUp);
+    window.addEventListener('touchmove', handleGlobalMove, { passive: false });
+    window.addEventListener('touchend', handleGlobalUp);
     return () => {
       window.removeEventListener('mousemove', handleGlobalMove);
       window.removeEventListener('mouseup', handleGlobalUp);
+      window.removeEventListener('touchmove', handleGlobalMove);
+      window.removeEventListener('touchend', handleGlobalUp);
     };
   }, [dragState, bookings, orgId]);
 
@@ -797,6 +866,7 @@ const Timeline = ({ orgId }) => {
         className={`${classNames}${hasArrived ? ' booking-active' : ''}`}
         style={blockStyle}
         onMouseDown={(e) => handleBlockMouseDown(e, booking)}
+        onTouchStart={(e) => handleBlockTouchStart(e, booking)}
       >
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div className="booking-title" title={displayTitle} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -819,7 +889,11 @@ const Timeline = ({ orgId }) => {
           </div>
         </div>
 
-        <div className="booking-resize-handle" onMouseDown={(e) => handleResizeMouseDown(e, booking)} />
+        <div 
+          className="booking-resize-handle" 
+          onMouseDown={(e) => handleResizeMouseDown(e, booking)} 
+          onTouchStart={(e) => handleResizeTouchStart(e, booking)} 
+        />
       </div>
     );
   };
