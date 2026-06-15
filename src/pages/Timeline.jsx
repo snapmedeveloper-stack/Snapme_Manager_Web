@@ -14,8 +14,8 @@ function LiveClock() {
   const formattedTime = time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent-primary)', fontFamily: 'Inter, sans-serif', letterSpacing: '1px', fontVariantNumeric: 'tabular-nums', minWidth: '105px', textAlign: 'right' }}>
+    <div className="timeline-live-clock-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div className="timeline-live-clock" style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent-primary)', fontFamily: 'Inter, sans-serif', letterSpacing: '1px', fontVariantNumeric: 'tabular-nums', minWidth: '105px', textAlign: 'right' }}>
         {formattedTime}
       </div>
     </div>
@@ -874,13 +874,13 @@ const Timeline = ({ orgId }) => {
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0px' }}>
       
       {/* Header Rekap / Bar Control */}
-      <div style={{ 
+      <div className="timeline-control-bar" style={{ 
         margin: '0 0 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
         flexWrap: 'wrap', gap: '16px', background: 'var(--bg-surface)', padding: '12px 24px', 
         border: '1px solid var(--border-color)', borderRadius: '12px'
       }}>
         {/* Tab & Stats */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div className="timeline-control-bar-left" style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', background: 'var(--bg-color)', borderRadius: 8, padding: 4, border: '1px solid var(--border-color)' }}>
             {['Semua', 'Studio', 'Photobooth'].map(tab => (
               <button
@@ -899,7 +899,7 @@ const Timeline = ({ orgId }) => {
             ))}
           </div>
 
-          <div style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
+          <div className="timeline-control-bar-separator" style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
 
           {recapBookings.length > 0 ? (
             <>
@@ -930,7 +930,7 @@ const Timeline = ({ orgId }) => {
                 </div>
               )}
 
-              <div style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
+              <div className="timeline-control-bar-separator" style={{ width: 1, height: 24, background: 'var(--border-color)' }} />
 
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <strong style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: 14 }}>
@@ -944,7 +944,7 @@ const Timeline = ({ orgId }) => {
         </div>
 
         {/* Right side controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="timeline-control-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button
             onClick={handleRecap}
             className="btn btn-ghost"
@@ -959,7 +959,7 @@ const Timeline = ({ orgId }) => {
             Copy Recap
           </button>
 
-          <div style={{ width: '1px', height: '18px', background: 'var(--border-color)' }}></div>
+          <div className="timeline-control-bar-separator" style={{ width: '1px', height: '18px', background: 'var(--border-color)' }}></div>
 
           <button 
             className="btn btn-ghost" 
@@ -1006,7 +1006,7 @@ const Timeline = ({ orgId }) => {
             </div>
           </div>
 
-          <div style={{ width: '1px', height: '28px', background: 'var(--border-color)' }}></div>
+          <div className="timeline-control-bar-separator" style={{ width: '1px', height: '28px', background: 'var(--border-color)' }}></div>
           <LiveClock />
         </div>
       </div>

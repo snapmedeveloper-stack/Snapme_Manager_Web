@@ -719,10 +719,11 @@ a {
 
 /* ===== PREMIERE SCROLLBAR (ZOOM CONTROLLER) ===== */
 .premiere-scrollbar-wrapper {
-  padding-left: 160px;
+  padding-left: 0;
 }
 
 .premiere-scrollbar-container {
+  margin-left: 160px;
   height: 14px;
   background: var(--bg-color);
   border-top: 1px solid var(--border-color);
@@ -1010,13 +1011,20 @@ a {
   }
 
   .timeline-header-left {
-    writing-mode: vertical-rl !important;
-    transform: rotate(180deg) !important;
-    padding: 0 4px !important;
+    font-size: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
     justify-content: center !important;
-    text-align: center !important;
+    writing-mode: horizontal-tb !important;
+    transform: none !important;
+  }
+  .timeline-header-left::before {
+    content: "LYR" !important;
     font-size: 9px !important;
-    white-space: nowrap !important;
+    font-weight: 800 !important;
+    color: var(--text-muted) !important;
+    letter-spacing: 0.5px !important;
   }
 
   .timeline-track-label {
@@ -1033,20 +1041,71 @@ a {
     overflow: visible !important;
     font-size: 11px !important;
     text-align: center !important;
+    display: inline-block !important;
+    width: auto !important;
   }
 
   .timeline-photobooth-divider {
-    writing-mode: vertical-rl !important;
-    transform: rotate(180deg) !important;
+    font-size: 0 !important;
     padding: 0 !important;
-    font-size: 8px !important;
-    justify-content: center !important;
+    display: flex !important;
     align-items: center !important;
-    white-space: nowrap !important;
+    justify-content: center !important;
+    background: var(--bg-color) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    writing-mode: horizontal-tb !important;
+    transform: none !important;
+  }
+  .timeline-photobooth-divider::before {
+    content: "PB" !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: var(--text-muted) !important;
+    letter-spacing: 0.5px !important;
   }
 
   .premiere-scrollbar-wrapper {
-    padding-left: 45px !important;
+    padding-left: 0 !important;
+  }
+
+  .premiere-scrollbar-container {
+    margin-left: 45px !important;
+  }
+
+  /* Control Bar Mobile Spacing & Structure */
+  .timeline-control-bar {
+    padding: 10px 14px !important;
+    gap: 10px !important;
+    margin-bottom: 12px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .timeline-control-bar-left {
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .timeline-control-bar-right {
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .timeline-control-bar-separator {
+    display: none !important;
+  }
+
+  .timeline-live-clock-container {
+    margin-left: auto !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+  }
+
+  .timeline-live-clock {
+    font-size: 18px !important;
+    min-width: auto !important;
   }
 
   .timeline-track-row {
