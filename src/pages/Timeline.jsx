@@ -799,22 +799,14 @@ const Timeline = ({ orgId }) => {
           </div>
         </div>
 
-        <div 
-          className="arrived-bar" 
-          onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-          onClick={(e) => { e.stopPropagation(); }}
-        >
-          <button
+        <div className="arrived-bar">
+          <div
             className={`arrived-bar-btn${hasArrived ? ' arrived-bar-btn-active' : ''}`}
-            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              handleToggleArrived(booking);
-            }}
-            title={hasArrived ? 'Klik untuk batalkan kedatangan' : 'Tandai Customer Datang'}
+            style={{ pointerEvents: 'none', cursor: 'default' }}
+            title={hasArrived ? 'Customer sudah datang' : 'Customer belum datang'}
           >
             {hasArrived ? 'Datang' : 'Belum Datang'}
-          </button>
+          </div>
         </div>
 
         <div className="booking-resize-handle" onMouseDown={(e) => handleResizeMouseDown(e, booking)} />
@@ -1282,6 +1274,34 @@ const Timeline = ({ orgId }) => {
                   </select>
                 </div>
               </div>
+
+              {/* Google Drive Link (if available) */}
+              {detailForm.driveLink && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 14px', marginTop: 14,
+                  background: 'rgba(16,185,129,0.08)',
+                  border: '1px solid rgba(16,185,129,0.3)',
+                  borderRadius: 10
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>Folder Google Drive</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detailForm.driveLink}</div>
+                  </div>
+                  <a
+                    href={detailForm.driveLink} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      flexShrink: 0, padding: '5px 10px',
+                      background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)',
+                      borderRadius: 7, color: '#10b981', fontSize: 12, fontWeight: 700,
+                      textDecoration: 'none', whiteSpace: 'nowrap'
+                    }}
+                  >Buka ↗</a>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, borderTop: '1px solid var(--border-color)', paddingTop: 18 }}>
