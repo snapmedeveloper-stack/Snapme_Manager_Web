@@ -535,6 +535,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
         wrapper.style.width = '794px';
         wrapper.style.zIndex = '999999';
         wrapper.style.background = 'white';
+        wrapper.style.overflow = 'visible';
+        wrapper.style.maxHeight = 'none';
 
         // Clone element untuk memisahkan dari batasan CSS parent
         clone = originalElement.cloneNode(true);
@@ -546,6 +548,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
         clone.style.padding = '40px';
         clone.style.boxSizing = 'border-box';
         clone.style.opacity = '1';
+        clone.style.overflow = 'visible';
+        clone.style.maxHeight = 'none';
         
         wrapper.appendChild(clone);
         document.body.appendChild(wrapper);
@@ -557,7 +561,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
         // Render Canvas
         const canvas = await html2canvas(wrapper, {
-          scale: 2, 
+          scale: 1, // TURUNKAN SCALE: 2 terlalu besar untuk memori GPU browser HP, menyebabkan kanvas panjang terpotong
           useCORS: true,
           width: 794,
           height: totalHeight,
