@@ -5,13 +5,34 @@ const PDFDocument = require("pdfkit");
 
 admin.initializeApp();
 
+// HTTP function (bukan Callable) agar CORS bisa diset manual di baris pertama
 exports.generateReport = functions
   .region('asia-southeast2')
   .runWith({ timeoutSeconds: 300, memory: '512MB' })
-  .https.onCall(async (data, context) => {
+  .https.onRequest(async (req, res) => {
 
-  const { orgId, startMillis, endMillis, filterTab, periodeLabel } = data;
-  if (!orgId) throw new functions.https.HttpsError('invalid-argument', 'orgId is required');
+  // === CORS HEADERS - SELALU DI BARIS PERTAMA ===
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const { orgId, startMillis, endMillis, filterTab, periodeLabel } = req.body;
+
+  if (!orgId) {
+    res.status(400).json({ error: 'orgId is required' });
+    return;
+  }
 
   const db = admin.firestore();
   console.log(`[generateReport] START orgId=${orgId} filter=${filterTab}`);
@@ -22,10 +43,10 @@ exports.generateReport = functions
     let q = txRef;
     if (startMillis && endMillis) {
       q = txRef
-        .where('createdAt', '>=', admin.firestore.Timestamp.fromMillis(startMillis))
-        .where('createdAt', '<', admin.firestore.Timestamp.fromMillis(endMillis));
+        .where('createdAt', '>=', admin.firestore.Timestamp.fromMillis(Number(startMillis)))
+        .where('createdAt', '<', admin.firestore.Timestamp.fromMillis(Number(endMillis)));
     } else if (startMillis) {
-      q = txRef.where('createdAt', '>=', admin.firestore.Timestamp.fromMillis(startMillis));
+      q = txRef.where('createdAt', '>=', admin.firestore.Timestamp.fromMillis(Number(startMillis)));
     }
 
     const txSnap = await q.get();
@@ -38,7 +59,7 @@ exports.generateReport = functions
         if (td.bookingId) bIds.add(td.bookingId);
       }
     });
-    console.log(`[generateReport] Fetched ${txs.length} active transactions`);
+    console.log(`[generateReport] Fetched ${txs.length} transactions`);
 
     // 2. Fetch Bookings in batches of 30
     const bookingsData = {};
@@ -61,7 +82,7 @@ exports.generateReport = functions
     const tplSnap = await db.collection(`organizations/${orgId}/templates`).get();
     const templates = tplSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // 4. Aggregate Data
+    // 4. Aggregate
     let totalNominal = 0, totalPaket = 0, totalCetak = 0, totalCustom = 0;
     let totalTunai = 0, totalTransfer = 0, transactionCount = 0;
     const dataMap = new Map();
@@ -111,13 +132,12 @@ exports.generateReport = functions
 
     console.log(`[generateReport] Filtered=${filteredTxs.length} txs, revenue=${totalNominal}`);
 
-    // 5. Generate Charts via QuickChart
+    // 5. Charts via QuickChart
     let barChartBuf = null;
     let pieChartBuf = null;
-
     try {
       if (sortedChartData.length > 0) {
-        const barRes = await axios.post('https://quickchart.io/chart', {
+        const r = await axios.post('https://quickchart.io/chart', {
           chart: {
             type: 'bar',
             data: {
@@ -128,12 +148,11 @@ exports.generateReport = functions
           },
           width: 500, height: 240, format: 'png', backgroundColor: 'white'
         }, { responseType: 'arraybuffer', timeout: 20000 });
-        barChartBuf = Buffer.from(barRes.data);
-        console.log(`[generateReport] Bar chart OK (${barChartBuf.length} bytes)`);
+        barChartBuf = Buffer.from(r.data);
+        console.log(`[generateReport] Bar chart OK`);
       }
-
       if (pieData.length > 0) {
-        const pieRes = await axios.post('https://quickchart.io/chart', {
+        const r = await axios.post('https://quickchart.io/chart', {
           chart: {
             type: 'doughnut',
             data: {
@@ -144,136 +163,112 @@ exports.generateReport = functions
           },
           width: 340, height: 240, format: 'png', backgroundColor: 'white'
         }, { responseType: 'arraybuffer', timeout: 20000 });
-        pieChartBuf = Buffer.from(pieRes.data);
-        console.log(`[generateReport] Pie chart OK (${pieChartBuf.length} bytes)`);
+        pieChartBuf = Buffer.from(r.data);
+        console.log(`[generateReport] Pie chart OK`);
       }
     } catch (chartErr) {
-      console.warn('[generateReport] Chart generation failed:', chartErr.message);
+      console.warn('[generateReport] Chart failed (continuing):', chartErr.message);
     }
 
-    // 6. Build PDF with pdfkit
+    // 6. Generate PDF with pdfkit
     const formatRupiah = (num) => `Rp ${(num || 0).toLocaleString('id-ID')}`;
-
     const doc = new PDFDocument({ size: 'A4', margins: { top: 40, bottom: 40, left: 40, right: 40 } });
-    const pageW = 515; // A4 width minus margins
+    const pageW = 515;
 
-    // Header
-    doc.font('Helvetica-Bold').fontSize(18).text('Laporan Rekapitulasi Snapme', { align: 'center' });
-    doc.font('Helvetica').fontSize(10).fillColor('#475569').text(`Periode: ${periodeLabel || '-'} | Kategori: ${filterTab}`, { align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(18).fillColor('#0f172a').text('Laporan Rekapitulasi Snapme', { align: 'center' });
+    doc.font('Helvetica').fontSize(10).fillColor('#475569').text(`Periode: ${periodeLabel || '-'} | Kategori: ${filterTab || 'Semua'}`, { align: 'center' });
     doc.fontSize(9).fillColor('#94a3b8').text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, { align: 'center' });
     doc.moveDown(1.5);
 
-    // KPI Table
-    const kpiCols = 4;
-    const kpiW = pageW / kpiCols;
+    // KPI row
     const kpiLabels = ['Total Pendapatan', 'Total Transaksi', 'Transfer / QR', 'Tunai'];
     const kpiValues = [formatRupiah(totalNominal), `${transactionCount}`, formatRupiah(totalTransfer), formatRupiah(totalTunai)];
-    const kpiStartY = doc.y;
-
-    // Draw header row
-    doc.rect(40, kpiStartY, pageW, 22).fill('#f1f5f9');
+    const kpiW = pageW / 4;
+    const kpiY = doc.y;
+    doc.rect(40, kpiY, pageW, 20).fill('#f1f5f9');
     kpiLabels.forEach((label, i) => {
       doc.font('Helvetica-Bold').fontSize(8).fillColor('#334155')
-        .text(label, 40 + i * kpiW, kpiStartY + 7, { width: kpiW, align: 'center' });
+        .text(label, 40 + i * kpiW, kpiY + 6, { width: kpiW, align: 'center' });
     });
-
-    // Draw value row
-    const kpiValY = kpiStartY + 22;
-    doc.rect(40, kpiValY, pageW, 26).stroke('#e2e8f0');
+    const kpiValY = kpiY + 20;
+    doc.rect(40, kpiValY, pageW, 24).stroke('#e2e8f0');
     kpiValues.forEach((val, i) => {
-      const color = i === 0 ? '#10b981' : '#0f172a';
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(color)
-        .text(val, 40 + i * kpiW, kpiValY + 8, { width: kpiW, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(i === 0 ? '#10b981' : '#0f172a')
+        .text(val, 40 + i * kpiW, kpiValY + 7, { width: kpiW, align: 'center' });
     });
-
-    doc.y = kpiValY + 36;
+    doc.y = kpiValY + 34;
     doc.moveDown(1);
 
     // Charts
-    const chartStartY = doc.y;
-    if (pieChartBuf && barChartBuf) {
-      doc.image(pieChartBuf, 40, chartStartY, { width: 230 });
-      doc.image(barChartBuf, 280, chartStartY, { width: 275 });
-      doc.y = chartStartY + 185;
-      doc.moveDown(1);
-    } else if (barChartBuf) {
-      doc.image(barChartBuf, 40, chartStartY, { width: 450 });
-      doc.y = chartStartY + 200;
-      doc.moveDown(1);
+    const chartY = doc.y;
+    if (pieChartBuf || barChartBuf) {
+      try {
+        if (pieChartBuf) doc.image(pieChartBuf, 40, chartY, { width: 220 });
+        if (barChartBuf) doc.image(barChartBuf, 275, chartY, { width: 280 });
+        doc.y = chartY + 185;
+        doc.moveDown(1);
+      } catch (imgErr) {
+        console.warn('[generateReport] Image embed failed:', imgErr.message);
+        doc.moveDown(1);
+      }
     }
 
-    // Transaction Table title
+    // Transaction table header
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#0f172a').text('Rincian Transaksi');
     doc.moveDown(0.5);
 
-    // Table header
-    const colWidths = [60, 160, 90, 65, 80];
-    const colHeaders = ['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Total'];
-    let tableX = 40;
-    const headerY = doc.y;
-
-    doc.rect(tableX, headerY, pageW, 18).fill('#0f172a');
-    colHeaders.forEach((h, i) => {
-      const x = tableX + colWidths.slice(0, i).reduce((a, b) => a + b, 0);
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff')
-        .text(h, x + 4, headerY + 5, { width: colWidths[i] - 8 });
+    const colW = [60, 155, 95, 65, 80];
+    const colH = ['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Total'];
+    const thY = doc.y;
+    doc.rect(40, thY, pageW, 18).fill('#0f172a');
+    colH.forEach((h, i) => {
+      const x = 40 + colW.slice(0, i).reduce((a, b) => a + b, 0);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#fff').text(h, x + 4, thY + 5, { width: colW[i] - 8 });
     });
 
-    let rowY = headerY + 18;
-
+    let rowY = thY + 18;
     filteredTxs.forEach((tx, idx) => {
+      if (rowY + 16 > doc.page.height - 50) {
+        doc.addPage();
+        rowY = 40;
+      }
       const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
-      const timeStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-      const rowData = [
-        timeStr,
+      const cells = [
+        `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`,
         tx.customerName || '-',
         tx.transactionNumber || '-',
         tx.isPb ? 'Photobooth' : 'Studio',
         formatRupiah(tx.total || 0)
       ];
-
-      // Check if need new page
-      if (rowY + 18 > doc.page.height - 50) {
-        doc.addPage();
-        rowY = 40;
-      }
-
-      const bgColor = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
-      doc.rect(40, rowY, pageW, 16).fill(bgColor);
-
-      rowData.forEach((val, i) => {
-        const x = tableX + colWidths.slice(0, i).reduce((a, b) => a + b, 0);
-        const isBold = i === 4;
-        doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor('#0f172a')
-          .text(String(val), x + 4, rowY + 4, { width: colWidths[i] - 8, ellipsis: true, lineBreak: false });
+      doc.rect(40, rowY, pageW, 16).fill(idx % 2 === 1 ? '#f8fafc' : '#fff');
+      cells.forEach((val, i) => {
+        const x = 40 + colW.slice(0, i).reduce((a, b) => a + b, 0);
+        doc.font(i === 4 ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor('#0f172a')
+          .text(String(val), x + 4, rowY + 4, { width: colW[i] - 8, ellipsis: true, lineBreak: false });
       });
-
-      // Row bottom border
-      doc.moveTo(40, rowY + 16).lineTo(555, rowY + 16).stroke('#e2e8f0');
+      doc.moveTo(40, rowY + 16).lineTo(555, rowY + 16).lineWidth(0.5).stroke('#e2e8f0');
       rowY += 16;
     });
 
-    console.log(`[generateReport] PDF built, converting to base64...`);
-
-    // 7. Return PDF as base64
+    // Collect PDF buffer
     const pdfBase64 = await new Promise((resolve, reject) => {
       const chunks = [];
-      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('data', c => chunks.push(c));
       doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
       doc.on('error', reject);
       doc.end();
     });
 
-    console.log(`[generateReport] Done! PDF size=${Math.round(pdfBase64.length / 1024)}KB`);
+    console.log(`[generateReport] Done! size=${Math.round(pdfBase64.length / 1024)}KB rows=${filteredTxs.length}`);
 
-    return {
+    res.json({
       success: true,
       pdfBase64,
       filename: `Laporan_Snapme_${(periodeLabel || 'Semua').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
-    };
+    });
 
   } catch (error) {
-    console.error("[generateReport] FATAL ERROR:", error.message, error.stack);
-    throw new functions.https.HttpsError('internal', error.message);
+    console.error("[generateReport] ERROR:", error.message, error.stack);
+    res.status(500).json({ error: error.message });
   }
 });

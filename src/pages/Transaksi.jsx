@@ -503,50 +503,46 @@ export default function Transaksi({ user, orgId, userMeta }) {
   const handleShareReport = async () => {
     setIsGeneratingPdf(true);
     try {
-      const firebaseFunctions = getFunctions(db.app, 'asia-southeast2');
-      const generateReportFn = httpsCallable(firebaseFunctions, 'generateReport', { timeout: 300000 });
-      
+      const FUNCTION_URL = 'https://asia-southeast2-snapme-database.cloudfunctions.net/generateReport';
+
       const startMillis = startDate ? startDate.getTime() : null;
       const endMillis = endDate ? endDate.getTime() : null;
 
-      const res = await generateReportFn({
-        orgId,
-        startMillis,
-        endMillis,
-        filterTab,
-        periodeLabel: getPeriodeLabel()
+      const response = await fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId, startMillis, endMillis, filterTab, periodeLabel: getPeriodeLabel() })
       });
 
-      if (res.data && res.data.pdfBase64) {
-        // Convert base64 to blob and trigger download
-        const byteCharacters = atob(res.data.pdfBase64);
-        const byteNumbers = new Array(byteCharacters.length);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.pdfBase64) {
+        const byteCharacters = atob(result.pdfBase64);
+        const byteArray = new Uint8Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+          byteArray[i] = byteCharacters.charCodeAt(i);
         }
-        const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
 
-        // Coba Web Share API dulu (untuk mobile)
-        const filename = res.data.filename || 'Laporan_Snapme.pdf';
+        const filename = result.filename || 'Laporan_Snapme.pdf';
         const file = new File([blob], filename, { type: 'application/pdf' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Laporan Snapme',
-            text: `Laporan transaksi periode ${getPeriodeLabel()}`
-          });
+          await navigator.share({ files: [file], title: 'Laporan Snapme', text: `Laporan periode ${getPeriodeLabel()}` });
         } else {
-          // Fallback: buka PDF di tab baru (desktop)
           window.open(url, '_blank');
         }
       } else {
-        alert("Gagal mendapatkan data laporan dari server.");
+        throw new Error('Tidak ada data PDF dari server.');
       }
     } catch (err) {
-      console.error("Gagal membuat/membagikan PDF:", err);
-      alert(`Gagal membagikan laporan: ${err.message || 'Silakan coba lagi.'}`);
+      console.error('Gagal membuat/membagikan PDF:', err);
+      alert(`Gagal membagikan laporan: ${err.message}`);
     } finally {
       setIsGeneratingPdf(false);
     }
