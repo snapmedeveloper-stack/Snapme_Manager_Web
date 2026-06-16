@@ -38,7 +38,7 @@ const normalizePhoneNumber = (phone) => {
   return p;
 };
 
-const Timeline = ({ orgId }) => {
+const Timeline = ({ orgId, user }) => {
   const [bookings, setBookings] = useState([]);
   const [studios, setStudios] = useState([]);
   const [photobooths, setPhotobooths] = useState([]);
@@ -626,6 +626,7 @@ const Timeline = ({ orgId }) => {
         startMin: modalForm.startMin,
         time: timeStr,
         duration: Number(calculatedDuration),
+        managerId: user?.uid || null,
         createdAt: new Date().toISOString()
       });
       setIsModalOpen(false);

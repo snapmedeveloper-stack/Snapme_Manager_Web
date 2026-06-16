@@ -138,7 +138,7 @@ function App() {
       <Layout user={user} onLogout={handleLogout}>
         <Routes>
           <Route path="/" element={<Dashboard orgId={orgId} />} />
-          <Route path="/timeline" element={<Timeline orgId={orgId} />} />
+          <Route path="/timeline" element={<Timeline orgId={orgId} user={user} />} />
           <Route path="/transaksi" element={<Transaksi orgId={orgId} />} />
         </Routes>
       </Layout>
