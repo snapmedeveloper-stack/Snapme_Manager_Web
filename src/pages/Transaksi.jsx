@@ -503,8 +503,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
   const handleShareReport = async () => {
     setIsGeneratingPdf(true);
     try {
-      const functions = getFunctions(db.app, 'asia-southeast2');
-      const generateReportFn = httpsCallable(functions, 'generateReport');
+      const firebaseFunctions = getFunctions(db.app, 'asia-southeast2');
+      const generateReportFn = httpsCallable(firebaseFunctions, 'generateReport', { timeout: 300000 });
       
       const startMillis = startDate ? startDate.getTime() : null;
       const endMillis = endDate ? endDate.getTime() : null;
@@ -517,14 +517,36 @@ export default function Transaksi({ user, orgId, userMeta }) {
         periodeLabel: getPeriodeLabel()
       });
 
-      if (res.data && res.data.url) {
-        window.open(res.data.url, '_blank');
+      if (res.data && res.data.pdfBase64) {
+        // Convert base64 to blob and trigger download
+        const byteCharacters = atob(res.data.pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+
+        // Coba Web Share API dulu (untuk mobile)
+        const filename = res.data.filename || 'Laporan_Snapme.pdf';
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Laporan Snapme',
+            text: `Laporan transaksi periode ${getPeriodeLabel()}`
+          });
+        } else {
+          // Fallback: buka PDF di tab baru (desktop)
+          window.open(url, '_blank');
+        }
       } else {
-        alert("Gagal mendapatkan link laporan.");
+        alert("Gagal mendapatkan data laporan dari server.");
       }
     } catch (err) {
       console.error("Gagal membuat/membagikan PDF:", err);
-      alert("Gagal membagikan laporan. Silakan coba lagi.");
+      alert(`Gagal membagikan laporan: ${err.message || 'Silakan coba lagi.'}`);
     } finally {
       setIsGeneratingPdf(false);
     }
