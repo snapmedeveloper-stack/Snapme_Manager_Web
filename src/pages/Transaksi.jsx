@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -13,6 +13,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
   const [expandedId, setExpandedId] = useState(null);
   const [kasirSettings, setKasirSettings] = useState({});
   const [loading, setLoading] = useState(true);
+  const dateInputRef = useRef(null);
 
   // Data Katalog untuk kategorisasi rekap
   const [packages, setPackages] = useState([]);
@@ -433,7 +434,15 @@ export default function Transaksi({ user, orgId, userMeta }) {
         <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, whiteSpace: 'nowrap' }}>
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFilter(val);
+              if (val === 'custom') {
+                if (dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
+                  try { dateInputRef.current.showPicker(); } catch (err) {}
+                }
+              }
+            }}
             style={{
               padding: '6px 12px',
               borderRadius: 8,
@@ -475,24 +484,24 @@ export default function Transaksi({ user, orgId, userMeta }) {
             <option value="Photobooth">Kategori: Photobooth</option>
           </select>
 
-          {filter === 'custom' && (
-            <input
-              type="date"
-              value={customDate}
-              onChange={(e) => setCustomDate(e.target.value)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: 6,
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface)',
-                color: 'var(--text-primary)',
-                fontSize: 12,
-                fontWeight: 600,
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            />
-          )}
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={customDate}
+            onChange={(e) => setCustomDate(e.target.value)}
+            style={{
+              display: filter === 'custom' ? 'block' : 'none',
+              padding: '4px 8px',
+              borderRadius: 6,
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-surface)',
+              color: 'var(--text-primary)',
+              fontSize: 12,
+              fontWeight: 600,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
         </div>
       </div>
 
