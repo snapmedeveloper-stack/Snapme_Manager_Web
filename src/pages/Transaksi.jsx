@@ -501,6 +501,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
   const handleShareReport = async () => {
     setIsGeneratingPdf(true);
+    const scrollPos = window.scrollY;
+    window.scrollTo(0, 0); // Gulir ke atas agar elemen absolute berada tepat di tangkapan layar
     
     // Beri jeda agar React merender div pdf-report-content dengan display: block
     setTimeout(async () => {
@@ -515,14 +517,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
           margin: 0,
           filename: `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
           image: { type: 'jpeg', quality: 1.0 },
-          html2canvas: { 
-            scale: 2, 
-            useCORS: true, 
-            scrollY: 0,
-            x: 0,
-            y: 0,
-            windowWidth: 794 // Paksa html2canvas merender sesuai lebar A4
-          },
+          html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -551,8 +546,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
         alert("Gagal membagikan laporan. Silakan coba lagi.");
       } finally {
         setIsGeneratingPdf(false);
+        window.scrollTo(0, scrollPos); // Kembalikan scroll
       }
-    }, 500);
+    }, 800); // 800ms jeda rendering
   };
 
   return (
@@ -998,20 +994,31 @@ export default function Transaksi({ user, orgId, userMeta }) {
       {/* ----------------- HIDDEN PRINT LAYOUT (PDF EXPORT) ----------------- */}
       <div 
         id="pdf-report-content"
-        className={isGeneratingPdf ? "" : "print-only"} 
+        className={isGeneratingPdf ? "pdf-mode" : "print-only"} 
         style={{ 
           display: isGeneratingPdf ? 'block' : 'none',
           position: isGeneratingPdf ? 'absolute' : 'static',
           top: 0,
-          left: 0, // Jangan gunakan -9999 karena html2canvas akan memotong gambar
+          left: 0,
           width: isGeneratingPdf ? '794px' : 'auto',
           background: 'white',
           padding: isGeneratingPdf ? '40px' : 0,
           boxSizing: 'border-box',
-          zIndex: -9999 // Sembunyikan di belakang aplikasi utama
+          zIndex: 9999 // Tampilkan overlay putih saat proses agar koordinatnya presisi
         }}
       >
         <style>{`
+          /* CSS khusus saat mode PDF aktif (html2pdf berjalan di luar media print) */
+          .pdf-mode { font-family: Arial, sans-serif; color: #000; }
+          .pdf-mode .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+          .pdf-mode .print-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #f8fafc; }
+          .pdf-mode .print-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #475569; text-transform: uppercase; }
+          .pdf-mode .print-card .stat { font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 4px; }
+          .pdf-mode .print-card .sub-stat { font-size: 12px; color: #64748b; }
+          .pdf-mode .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+          .pdf-mode .print-table th { background: #f1f5f9; padding: 10px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+          .pdf-mode .print-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+
           @media print {
             body { background: white !important; margin: 0; padding: 0; }
             .no-print { display: none !important; }
