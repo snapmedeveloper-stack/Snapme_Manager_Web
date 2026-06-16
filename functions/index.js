@@ -220,8 +220,8 @@ exports.generateReport = functions
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#0f172a').text('Rincian Transaksi');
     doc.moveDown(0.5);
 
-    const colW = [60, 155, 95, 65, 80];
-    const colH = ['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Total'];
+    const colW = [55, 120, 90, 55, 45, 75];
+    const colH = ['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Bayar', 'Total'];
     const thY = doc.y;
     doc.rect(40, thY, pageW, 18).fill('#0f172a');
     colH.forEach((h, i) => {
@@ -241,12 +241,15 @@ exports.generateReport = functions
         tx.customerName || '-',
         tx.transactionNumber || '-',
         tx.isPb ? 'Photobooth' : 'Studio',
+        tx.paymentMethod === 'transfer' ? 'TF' : 'Cash',
         formatRupiah(tx.total || 0)
       ];
       doc.rect(40, rowY, pageW, 16).fill(idx % 2 === 1 ? '#f8fafc' : '#fff');
       cells.forEach((val, i) => {
         const x = 40 + colW.slice(0, i).reduce((a, b) => a + b, 0);
-        doc.font(i === 4 ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor('#0f172a')
+        const isBold = i === 5; // kolom Total
+        const color = i === 4 ? (val === 'TF' ? '#3b82f6' : '#10b981') : '#0f172a';
+        doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor(color)
           .text(String(val), x + 4, rowY + 4, { width: colW[i] - 8, ellipsis: true, lineBreak: false });
       });
       doc.moveTo(40, rowY + 16).lineTo(555, rowY + 16).lineWidth(0.5).stroke('#e2e8f0');
