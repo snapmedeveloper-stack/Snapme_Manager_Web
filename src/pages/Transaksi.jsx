@@ -669,7 +669,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
                       <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
                       <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }} />
-                      <Bar dataKey="Transaksi" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Transaksi" fill="#a855f7" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -937,6 +937,14 @@ export default function Transaksi({ user, orgId, userMeta }) {
             <div className="stat">{formatRupiah(pbSummary.revenue)}</div>
             <div className="sub-stat">{pbSummary.count} Transaksi | AOV: {formatRupiah(pbSummary.aov)}</div>
           </div>
+          <div className="print-card" style={{ background: '#eff6ff', borderColor: '#bfdbfe' }}>
+            <h4 style={{ color: '#1d4ed8' }}>Transfer / QRIS</h4>
+            <div className="stat">{formatRupiah(summary.totalTransfer)}</div>
+          </div>
+          <div className="print-card" style={{ background: '#fdf4ff', borderColor: '#fbcfe8' }}>
+            <h4 style={{ color: '#be185d' }}>Uang Tunai (Cash)</h4>
+            <div className="stat">{formatRupiah(summary.totalTunai)}</div>
+          </div>
         </div>
 
         <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
@@ -948,7 +956,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} dy={5} />
                   <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
-                  <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
