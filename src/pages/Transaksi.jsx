@@ -381,20 +381,34 @@ export default function Transaksi({ user, orgId, userMeta }) {
       const d = new Date(dateMillis);
       let label = '';
       
-      if (filter === 'today') {
+      const isCustomOneDay = filter === 'custom' && customStartDate && customEndDate && customStartDate === customEndDate;
+      const isCustomMultiDay = filter === 'custom' && (!isCustomOneDay);
+
+      if (filter === 'today' || isCustomOneDay) {
         label = `${d.getHours().toString().padStart(2, '0')}:00`;
       } else if (filter === 'week') {
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         label = days[d.getDay()];
-      } else if (filter === 'month') {
-        label = `Tgl ${d.getDate()}`;
+      } else if (filter === 'month' || isCustomMultiDay) {
+        label = `${d.getDate().toString().padStart(2, '0')} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][d.getMonth()]}`;
       } else {
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-        label = months[d.getMonth()];
+        label = `${months[d.getMonth()]} ${d.getFullYear()}`;
       }
 
       if (!dataMap.has(label)) {
-        dataMap.set(label, { name: label, Total: 0, Bokingan: 0, Transaksi: 0 });
+        let sortKey = 0;
+        if (filter === 'today' || isCustomOneDay) sortKey = label;
+        else if (filter === 'week') {
+           const dayOrder = { 'Senin':1, 'Selasa':2, 'Rabu':3, 'Kamis':4, 'Jumat':5, 'Sabtu':6, 'Minggu':7 };
+           sortKey = dayOrder[label];
+        } else if (filter === 'month' || isCustomMultiDay) {
+           // Create a clean timestamp for the start of the day to ensure consistent sorting
+           sortKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        } else {
+           sortKey = d.getFullYear() * 100 + d.getMonth();
+        }
+        dataMap.set(label, { name: label, Total: 0, Bokingan: 0, Transaksi: 0, sortKey });
       }
       const mapItem = dataMap.get(label);
       mapItem.Total += txTotal;
@@ -404,17 +418,10 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
     // Sorting chart data
     let sortedChartData = Array.from(dataMap.values());
-    if (filter === 'today') {
-      sortedChartData.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (filter === 'week') {
-       const dayOrder = { 'Senin':1, 'Selasa':2, 'Rabu':3, 'Kamis':4, 'Jumat':5, 'Sabtu':6, 'Minggu':7 };
-       sortedChartData.sort((a,b) => dayOrder[a.name] - dayOrder[b.name]);
-    } else if (filter === 'month') {
-       sortedChartData.sort((a,b) => parseInt(a.name.replace('Tgl ', '')) - parseInt(b.name.replace('Tgl ', '')));
-    } else {
-       const monthOrder = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'Mei':5, 'Jun':6, 'Jul':7, 'Ags':8, 'Sep':9, 'Okt':10, 'Nov':11, 'Des':12 };
-       sortedChartData.sort((a,b) => monthOrder[a.name] - monthOrder[b.name]);
-    }
+    sortedChartData.sort((a, b) => {
+       if (typeof a.sortKey === 'string') return a.sortKey.localeCompare(b.sortKey);
+       return a.sortKey - b.sortKey;
+    });
 
     const pieData = [
       { name: 'Paket', value: totalPaket },
@@ -672,7 +679,13 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
             {/* Jam Sibuk / Hari Sibuk Chart */}
             <div style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: 24, border: '1px solid var(--border-subtle)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginTop: 24 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>{filter === 'today' ? 'Analisis Jam Sibuk' : (filter === 'week' || filter === 'month') ? 'Analisis Hari Sibuk' : 'Analisis Waktu Sibuk'}</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>
+                {filter === 'today' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
+                  ? 'Analisis Jam Sibuk' 
+                  : (filter === 'week' || filter === 'month' || filter === 'custom') 
+                  ? 'Analisis Hari Sibuk' 
+                  : 'Analisis Waktu Sibuk'}
+              </h3>
               <div style={{ height: 250 }}>
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -960,7 +973,13 @@ export default function Transaksi({ user, orgId, userMeta }) {
         </div>
 
         <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
-          <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>{filter === 'today' ? 'Analisis Jam Sibuk' : (filter === 'week' || filter === 'month') ? 'Analisis Hari Sibuk' : 'Analisis Waktu Sibuk'}</h3>
+          <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>
+            {filter === 'today' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
+              ? 'Analisis Jam Sibuk' 
+              : (filter === 'week' || filter === 'month' || filter === 'custom') 
+              ? 'Analisis Hari Sibuk' 
+              : 'Analisis Waktu Sibuk'}
+          </h3>
           {chartData.length > 0 ? (
             <div style={{ height: 250, width: '100%', display: 'flex', justifyContent: 'center' }}>
               <BarChart width={650} height={250} data={chartData}>
