@@ -512,10 +512,10 @@ export default function Transaksi({ user, orgId, userMeta }) {
         const html2canvasModule = await import('html2canvas');
         const html2canvas = html2canvasModule.default || html2canvasModule;
         
-        const jspdfModule = await import('jspdf');
-        const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
+        const autotableModule = await import('jspdf-autotable');
+        const autoTable = autotableModule.default || autotableModule;
 
-        const originalElement = document.getElementById('pdf-report-content');
+        const originalElement = document.getElementById('pdf-report-header');
         if (!originalElement) return;
 
         const originalHtmlOverflow = document.documentElement.style.overflow;
@@ -535,41 +535,40 @@ export default function Transaksi({ user, orgId, userMeta }) {
         wrapper.style.width = '794px';
         wrapper.style.zIndex = '999999';
         wrapper.style.background = 'white';
-        wrapper.style.overflow = 'visible';
-        wrapper.style.maxHeight = 'none';
 
-        // Clone element untuk memisahkan dari batasan CSS parent
+        // Clone hanya bagian header dan grafik
         clone = originalElement.cloneNode(true);
         clone.id = 'pdf-report-clone';
         clone.style.display = 'block';
-        clone.style.position = 'relative'; // relative inside wrapper
+        clone.style.position = 'relative'; 
         clone.style.width = '100%';
         clone.style.background = 'white';
         clone.style.padding = '40px';
+        clone.style.paddingBottom = '20px'; // Kurangi jarak bawah karena ada autotable
         clone.style.boxSizing = 'border-box';
         clone.style.opacity = '1';
-        clone.style.overflow = 'visible';
-        clone.style.maxHeight = 'none';
+        clone.className = 'pdf-mode'; // Agar CSS diaplikasikan
         
         wrapper.appendChild(clone);
         document.body.appendChild(wrapper);
 
-        // Tunggu sedikit agar browser mengkalkulasi layout baru tanpa batasan viewport
+        // Tunggu sedikit agar chart selesai render
         await new Promise(resolve => setTimeout(resolve, 800));
 
         const totalHeight = wrapper.scrollHeight;
 
-        // Render Canvas
         const canvas = await html2canvas(wrapper, {
-          scale: 1, // TURUNKAN SCALE: 2 terlalu besar untuk memori GPU browser HP, menyebabkan kanvas panjang terpotong
+          scale: 2, 
           useCORS: true,
           width: 794,
           height: totalHeight,
           windowWidth: 794,
           windowHeight: totalHeight,
-          logging: true
+          logging: false
         });
 
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        
         const pdf = new jsPDF({
           orientation: 'portrait',
           unit: 'mm',
@@ -577,47 +576,45 @@ export default function Transaksi({ user, orgId, userMeta }) {
         });
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pageHeightMm = pdf.internal.pageSize.getHeight();
+        const imgHeightMm = (canvas.height * pdfWidth) / canvas.width;
         
-        // Tinggi 1 halaman A4 dalam piksel canvas
-        const pageHeightPx = Math.floor(canvas.width * (pageHeightMm / pdfWidth));
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeightMm);
 
-        let currentY = 0;
-        let isFirstPage = true;
+        // Data transaksi untuk autoTable
+        const tableBody = transactions.filter(tx => !tx.isDeleted).map(tx => {
+            const bData = tx.bookingId ? bookingsData[tx.bookingId] : null;
+            const isPb = bData && photobooths.includes(bData.studio);
+            if (filterTab === 'Studio' && isPb) return null;
+            if (filterTab === 'Photobooth' && !isPb) return null;
 
-        while (currentY < canvas.height) {
-          if (!isFirstPage) {
-            pdf.addPage();
-          }
-          isFirstPage = false;
+            const dateMillis = tx.createdAt?.toMillis ? tx.createdAt.toMillis() : Date.now();
+            const d = new Date(dateMillis);
+            const timeStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            
+            return [
+                timeStr,
+                tx.customerName,
+                tx.transactionNumber,
+                isPb ? 'Photobooth' : 'Studio',
+                formatRupiah(tx.total || 0)
+            ];
+        }).filter(Boolean);
 
-          const remainingHeightPx = canvas.height - currentY;
-          const currentSliceHeightPx = Math.min(pageHeightPx, remainingHeightPx);
+        // Eksekusi autotable
+        const autoTableOptions = {
+            head: [['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Total']],
+            body: tableBody,
+            startY: imgHeightMm + 5,
+            margin: { top: 15, left: 15, right: 15, bottom: 15 },
+            styles: { fontSize: 9, font: 'helvetica' },
+            headStyles: { fillColor: [15, 23, 42], textColor: 255 },
+            alternateRowStyles: { fillColor: [248, 250, 252] }
+        };
 
-          // Buat canvas sementara untuk potongan halaman ini
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = currentSliceHeightPx;
-          const ctx = sliceCanvas.getContext('2d');
-
-          // Isi background putih
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-
-          // Salin potongan dari canvas utama ke canvas sementara
-          ctx.drawImage(
-            canvas,
-            0, currentY, canvas.width, currentSliceHeightPx, // Source
-            0, 0, sliceCanvas.width, currentSliceHeightPx    // Destination
-          );
-
-          const sliceData = sliceCanvas.toDataURL('image/jpeg', 1.0);
-          const sliceHeightMm = (currentSliceHeightPx * pdfWidth) / canvas.width;
-
-          // Tambahkan potongan ke PDF tepat di koordinat Y=0
-          pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, sliceHeightMm);
-
-          currentY += pageHeightPx;
+        if (typeof autoTable === 'function') {
+            autoTable(pdf, autoTableOptions);
+        } else if (pdf.autoTable) {
+            pdf.autoTable(autoTableOptions);
         }
 
         const pdfBlob = pdf.output('blob');
@@ -1167,15 +1164,16 @@ export default function Transaksi({ user, orgId, userMeta }) {
           }
         `}</style>
         
-        <div style={{ textAlign: 'center', marginBottom: 30, borderBottom: '2px solid #0f172a', paddingBottom: 20 }}>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 24, color: '#0f172a' }}>Laporan Rekapitulasi Snapme</h1>
-          <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
-            Periode: {getPeriodeLabel()} 
-            {' | '}
-            Kategori Filter: {filterTab}
-          </p>
-          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 12 }}>Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
-        </div>
+        <div id="pdf-report-header">
+          <div style={{ textAlign: 'center', marginBottom: 30, borderBottom: '2px solid #0f172a', paddingBottom: 20 }}>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: 24, color: '#0f172a' }}>Laporan Rekapitulasi Snapme</h1>
+            <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
+              Periode: {getPeriodeLabel()} 
+              {' | '}
+              Kategori Filter: {filterTab}
+            </p>
+            <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 12 }}>Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
+          </div>
 
         <div className="print-grid">
           <div className="print-card" style={{ background: '#ecfdf5', borderColor: '#a7f3d0' }}>
@@ -1215,12 +1213,13 @@ export default function Transaksi({ user, orgId, userMeta }) {
                 <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </div>
-          ) : (
-            <div style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic' }}>Tidak ada data waktu sibuk pada periode ini.</div>
-          )}
+            ) : (
+              <div style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic', textAlign: 'center' }}>Tidak ada data waktu sibuk pada periode ini.</div>
+            )}
+          </div>
         </div>
 
-        <div>
+        <div id="pdf-report-table">
           <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>Rincian Transaksi</h3>
           <table className="print-table">
             <thead>
