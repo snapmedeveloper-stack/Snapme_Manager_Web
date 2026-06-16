@@ -94,6 +94,13 @@ exports.generateReport = functions
 
     const isHourly = (startMillis && endMillis) && (Number(endMillis) - Number(startMillis) <= 86400000);
 
+    if (isHourly) {
+      for (let i = 10; i <= 22; i++) {
+        const h = `${i.toString().padStart(2, '0')}:00`;
+        dataMap.set(h, { name: h, Transaksi: 0, sortKey: i });
+      }
+    }
+
     txs.forEach(tx => {
       const bData = bookingsData[tx.bookingId];
       const isPb = bData && photobooths.includes(bData.studio);
