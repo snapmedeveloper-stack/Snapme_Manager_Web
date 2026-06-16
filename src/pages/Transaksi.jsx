@@ -514,8 +514,15 @@ export default function Transaksi({ user, orgId, userMeta }) {
         const opt = {
           margin: 0,
           filename: `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+          image: { type: 'jpeg', quality: 1.0 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            windowWidth: 794 // Paksa html2canvas merender sesuai lebar A4
+          },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -996,12 +1003,12 @@ export default function Transaksi({ user, orgId, userMeta }) {
           display: isGeneratingPdf ? 'block' : 'none',
           position: isGeneratingPdf ? 'absolute' : 'static',
           top: 0,
-          left: isGeneratingPdf ? -9999 : 'auto',
+          left: 0, // Jangan gunakan -9999 karena html2canvas akan memotong gambar
           width: isGeneratingPdf ? '794px' : 'auto',
           background: 'white',
           padding: isGeneratingPdf ? '40px' : 0,
           boxSizing: 'border-box',
-          zIndex: -1000
+          zIndex: -9999 // Sembunyikan di belakang aplikasi utama
         }}
       >
         <style>{`
