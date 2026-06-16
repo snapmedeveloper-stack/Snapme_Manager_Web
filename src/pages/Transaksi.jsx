@@ -651,39 +651,40 @@ export default function Transaksi({ user, orgId, userMeta }) {
                   <div 
                     onClick={() => setExpandedId(isExpanded ? null : tx.id)}
                     style={{ 
-                      padding: '16px', 
+                      padding: '12px 16px', 
                       display: 'flex', 
                       flexWrap: 'wrap',
-                      gap: 16,
+                      gap: 12,
                       justifyContent: 'space-between', 
                       alignItems: 'center',
                       cursor: 'pointer',
                       background: isExpanded ? 'var(--bg-base)' : 'transparent'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: '1 1 250px' }}>
-                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent-subtle)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 250px' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-subtle)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                         {tx.paymentMethod === 'transfer' ? '💳' : '💵'}
                       </div>
                       <div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
                           {tx.customerName}
-                          {isPb && <span style={{ marginLeft: 8, fontSize: 10, background: 'rgba(168,85,247,0.1)', color: '#a855f7', padding: '2px 6px', borderRadius: 4 }}>PHOTOBOOTH</span>}
-                          {tx.isDeleted && <span style={{ fontSize: 10, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>DIHAPUS</span>}
+                          {isPb && <span style={{ marginLeft: 8, fontSize: 9, background: 'rgba(168,85,247,0.1)', color: '#a855f7', padding: '2px 6px', borderRadius: 4 }}>PHOTOBOOTH</span>}
+                          {tx.isDeleted && <span style={{ fontSize: 9, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>DIHAPUS</span>}
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{formattedDate} • {tx.transactionNumber}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formattedDate} • {tx.transactionNumber}</div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, flex: '1 1 200px', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: '1 1 200px', justifyContent: 'space-between' }}>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>{formatRupiah(tx.total)}</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2 }}>{formatRupiah(tx.total)}</div>
                         <div style={{ 
-                          fontSize: 10, fontWeight: 800, 
+                          fontSize: 9, fontWeight: 800, 
                           color: (isPb && stage === 4) || (!isPb && stage === 6) ? '#10b981' : 'var(--accent-primary)',
                           background: (isPb && stage === 4) || (!isPb && stage === 6) ? 'rgba(16,185,129,0.1)' : 'rgba(56, 189, 248, 0.1)', 
                           padding: '4px 8px', borderRadius: 6,
                           textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
+                          letterSpacing: '0.5px',
+                          display: 'inline-block'
                         }}>
                           {stage ? `Tahap ${stage}: ${isPb ? PB_STAGE_LABELS[stage - 1] : STAGE_LABELS[stage - 1]}` : 'Tanpa Booking'}
                         </div>
@@ -711,8 +712,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
                   {/* Card Body (Expanded Detail) */}
                   {isExpanded && (
-                    <div style={{ padding: '16px', borderTop: '1px solid var(--border-subtle)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-subtle)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                         {/* Kolom Kiri: Detail Items */}
                         <div>
                           <h4 style={{ fontSize: 14, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Item Transaksi</h4>
@@ -767,9 +768,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
                               Cetak Nota
                             </button>
                             
-                            {(booking?.waNumber || booking?.customerPhone) && (
+                            {(bData?.waNumber || bData?.customerPhone) && (
                               <button 
-                                onClick={() => window.open(`https://wa.me/${(booking.waNumber || booking.customerPhone).replace(/\D/g, '')}`, '_blank')}
+                                onClick={() => window.open(`https://wa.me/${(bData.waNumber || bData.customerPhone).replace(/\D/g, '')}`, '_blank')}
                                 style={{ flex: 1, minWidth: 140, padding: '10px', borderRadius: 8, background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 600, cursor: 'pointer' }}
                               >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
