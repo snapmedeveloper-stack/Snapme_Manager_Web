@@ -32,7 +32,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } else if (filter === 'week') {
       start = new Date(now);
-      start.setDate(now.getDate() - now.getDay()); // Mulai hari minggu
+      const day = now.getDay();
+      const diff = day === 0 ? 6 : day - 1; // Jika Minggu (0), mundur 6 hari. Jika hari lain, mundur day-1.
+      start.setDate(now.getDate() - diff); // Mulai hari senin
       start.setHours(0, 0, 0, 0);
     } else if (filter === 'month') {
       start = new Date(now.getFullYear(), now.getMonth(), 1);
