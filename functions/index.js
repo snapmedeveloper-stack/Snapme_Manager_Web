@@ -92,6 +92,8 @@ exports.generateReport = functions
     const filteredTxs = [];
     const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
+    const isHourly = (startMillis && endMillis) && (Number(endMillis) - Number(startMillis) <= 86400000);
+
     txs.forEach(tx => {
       const bData = bookingsData[tx.bookingId];
       const isPb = bData && photobooths.includes(bData.studio);
@@ -114,8 +116,15 @@ exports.generateReport = functions
       });
 
       const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
-      const label = `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]}`;
-      const sortKey = d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
+      let label, sortKey;
+      if (isHourly) {
+        label = `${d.getHours().toString().padStart(2,'0')}:00`;
+        sortKey = d.getHours();
+      } else {
+        label = `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]}`;
+        sortKey = d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
+      }
+
       if (!dataMap.has(label)) dataMap.set(label, { name: label, Transaksi: 0, sortKey });
       dataMap.get(label).Transaksi += 1;
     });
