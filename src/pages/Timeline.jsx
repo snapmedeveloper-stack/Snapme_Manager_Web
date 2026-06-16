@@ -879,11 +879,18 @@ const Timeline = ({ orgId }) => {
           </div>
         </div>
 
-        <div className="arrived-bar">
+        <div className="arrived-bar" onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }} onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}>
           <div
             className={`arrived-bar-btn${hasArrived ? ' arrived-bar-btn-active' : ''}`}
-            style={{ pointerEvents: 'none', cursor: 'default' }}
-            title={hasArrived ? 'Customer sudah datang' : 'Customer belum datang'}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!hasArrived && !booking.driveLink) {
+                showBookingToast('delete', 'Folder Drive belum dibuat! Buat link drive terlebih dahulu.');
+                return;
+              }
+              handleToggleArrived(booking);
+            }}
+            title={hasArrived ? 'Klik untuk batalkan kedatangan' : 'Tandai Customer Datang'}
           >
             {hasArrived ? 'Datang' : 'Belum Datang'}
           </div>
