@@ -443,7 +443,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
   }, [transactions, packages, addOns, templates, customSections, bookingsData, photobooths, filterTab, filter]);
 
   return (
-    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
+    <>
+      <div className="page-enter no-print" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
       {/* Header & Filter */}
       <div style={{ padding: '12px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12, zIndex: 10 }}>
         
@@ -872,6 +873,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
           </div>
         )}
       </div>
+    </div>
 
       {/* ----------------- HIDDEN PRINT LAYOUT (PDF EXPORT) ----------------- */}
       <div className="print-only" style={{ display: 'none' }}>
@@ -1051,6 +1053,6 @@ export default function Transaksi({ user, orgId, userMeta }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
