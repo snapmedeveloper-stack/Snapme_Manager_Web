@@ -965,15 +965,13 @@ export default function Transaksi({ user, orgId, userMeta }) {
         <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>Analisis Jam Sibuk</h3>
           {busyHoursData.length > 0 ? (
-            <div style={{ height: 250, width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={busyHoursData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} dy={5} />
-                  <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
-                  <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div style={{ height: 250, width: '100%', display: 'flex', justifyContent: 'center' }}>
+              <BarChart width={650} height={250} data={busyHoursData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} dy={5} />
+                <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+                <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              </BarChart>
             </div>
           ) : (
             <div style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic' }}>Tidak ada data jam sibuk pada periode ini.</div>
