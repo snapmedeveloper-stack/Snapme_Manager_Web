@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import html2pdf from 'html2pdf.js';
 
 export default function Transaksi({ user, orgId, userMeta }) {
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'custom', 'all'
@@ -506,6 +505,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
     // Beri jeda agar React merender div pdf-report-content dengan display: block
     setTimeout(async () => {
       try {
+        const html2pdfModule = await import('html2pdf.js');
+        const html2pdf = html2pdfModule.default || html2pdfModule;
+
         const element = document.getElementById('pdf-report-content');
         if (!element) return;
         
