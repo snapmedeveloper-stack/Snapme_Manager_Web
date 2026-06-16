@@ -521,7 +521,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
         clone = originalElement.cloneNode(true);
         clone.id = 'pdf-report-clone';
         clone.style.display = 'block';
-        clone.style.position = 'fixed';
+        clone.style.position = 'absolute'; // WAJIB absolute agar html2canvas merender keseluruhan panjang (bukan hanya seukuran viewport)
         clone.style.top = '0px';
         clone.style.left = '0px';
         clone.style.width = '794px';
