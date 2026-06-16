@@ -311,7 +311,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
   };
 
   // Hitung Rekap & Chart Data
-  const { summary, chartData, pieData, busyHoursData, studioSummary, pbSummary } = useMemo(() => {
+  const { summary, chartData, pieData, studioSummary, pbSummary } = useMemo(() => {
     let totalBokingan = 0;
     let totalNominal = 0;
     let totalPaket = 0;
@@ -326,7 +326,6 @@ export default function Transaksi({ user, orgId, userMeta }) {
     let pbSummary = { revenue: 0, count: 0, aov: 0 };
 
     const dataMap = new Map();
-    const busyHoursMap = new Map();
 
     transactions.forEach(tx => {
       if (tx.isDeleted) return; // ABAIKAN TRANSAKSI YANG DIHAPUS
@@ -381,10 +380,6 @@ export default function Transaksi({ user, orgId, userMeta }) {
       const d = new Date(dateMillis);
       let label = '';
       
-      // Jam Sibuk Aggregation
-      const hourStr = `${d.getHours().toString().padStart(2, '0')}:00`;
-      busyHoursMap.set(hourStr, (busyHoursMap.get(hourStr) || 0) + 1);
-      
       if (filter === 'today') {
         label = `${d.getHours().toString().padStart(2, '0')}:00`;
       } else if (filter === 'week') {
@@ -398,10 +393,11 @@ export default function Transaksi({ user, orgId, userMeta }) {
       }
 
       if (!dataMap.has(label)) {
-        dataMap.set(label, { name: label, Total: 0, Bokingan: 0 });
+        dataMap.set(label, { name: label, Total: 0, Bokingan: 0, Transaksi: 0 });
       }
       const mapItem = dataMap.get(label);
       mapItem.Total += txTotal;
+      mapItem.Transaksi += 1;
       if (tx.bookingId) mapItem.Bokingan += 1;
     });
 
@@ -430,15 +426,10 @@ export default function Transaksi({ user, orgId, userMeta }) {
     studioSummary.aov = studioSummary.count > 0 ? Math.round(studioSummary.revenue / studioSummary.count) : 0;
     pbSummary.aov = pbSummary.count > 0 ? Math.round(pbSummary.revenue / pbSummary.count) : 0;
 
-    const busyHoursData = Array.from(busyHoursMap.entries())
-      .map(([hour, count]) => ({ hour, Transaksi: count }))
-      .sort((a, b) => a.hour.localeCompare(b.hour));
-
     return { 
       summary: { totalBokingan, totalNominal, totalPaket, totalTambahan, totalCetak, totalCustom, totalTunai, totalTransfer, transactionCount, aov },
       chartData: sortedChartData,
       pieData,
-      busyHoursData,
       studioSummary,
       pbSummary
     };
@@ -675,22 +666,22 @@ export default function Transaksi({ user, orgId, userMeta }) {
               </div>
             </div>
 
-            {/* Jam Sibuk Chart */}
+            {/* Jam Sibuk / Hari Sibuk Chart */}
             <div style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: 24, border: '1px solid var(--border-subtle)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginTop: 24 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>Analisis Jam Sibuk</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>{filter === 'today' ? 'Analisis Jam Sibuk' : (filter === 'week' || filter === 'month') ? 'Analisis Hari Sibuk' : 'Analisis Waktu Sibuk'}</h3>
               <div style={{ height: 250 }}>
-                {busyHoursData.length > 0 ? (
+                {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={busyHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                      <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
                       <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }} />
                       <Bar dataKey="Transaksi" fill="#a855f7" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Belum ada data jam sibuk.</div>
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Belum ada data analisis waktu.</div>
                 )}
               </div>
             </div>
@@ -965,18 +956,18 @@ export default function Transaksi({ user, orgId, userMeta }) {
         </div>
 
         <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
-          <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>Analisis Jam Sibuk</h3>
-          {busyHoursData.length > 0 ? (
+          <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>{filter === 'today' ? 'Analisis Jam Sibuk' : (filter === 'week' || filter === 'month') ? 'Analisis Hari Sibuk' : 'Analisis Waktu Sibuk'}</h3>
+          {chartData.length > 0 ? (
             <div style={{ height: 250, width: '100%', display: 'flex', justifyContent: 'center' }}>
-              <BarChart width={650} height={250} data={busyHoursData}>
+              <BarChart width={650} height={250} data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} dy={5} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} dy={5} />
                 <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
                 <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </div>
           ) : (
-            <div style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic' }}>Tidak ada data jam sibuk pada periode ini.</div>
+            <div style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic' }}>Tidak ada data waktu sibuk pada periode ini.</div>
           )}
         </div>
 
