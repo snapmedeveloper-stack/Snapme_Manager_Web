@@ -2,8 +2,12 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const PDFDocument = require("pdfkit");
+const { getFirestore } = require('firebase-admin/firestore');
 
 admin.initializeApp();
+
+// Gunakan named database "default" agar sesuai dengan client SDK (getFirestore(app, "default"))
+const db = getFirestore(admin.app(), 'default');
 
 // HTTP function (bukan Callable) agar CORS bisa diset manual di baris pertama
 exports.generateReport = functions
@@ -34,7 +38,6 @@ exports.generateReport = functions
     return;
   }
 
-  const db = admin.firestore();
   console.log(`[generateReport] START orgId=${orgId} filter=${filterTab}`);
 
   try {
