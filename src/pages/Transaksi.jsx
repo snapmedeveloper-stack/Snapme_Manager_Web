@@ -422,7 +422,6 @@ export default function Transaksi({ user, orgId, userMeta }) {
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', margin: 0, color: 'var(--text-primary)' }}>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Transaksi
           </h1>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '4px 8px', borderRadius: 6, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent' }}>
@@ -432,33 +431,28 @@ export default function Transaksi({ user, orgId, userMeta }) {
         </div>
 
         <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, whiteSpace: 'nowrap' }}>
-          <div style={{ display: 'inline-flex', gap: 4, background: 'var(--bg-base)', padding: 4, borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-            {[
-              { id: 'today', label: 'Hari Ini' },
-              { id: 'week', label: 'Minggu Ini' },
-              { id: 'month', label: 'Bulan Ini' },
-              { id: 'custom', label: 'Pilih Tanggal' },
-              { id: 'all', label: 'Semua' }
-            ].map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: filter === f.id ? 'var(--accent-primary)' : 'transparent',
-                  color: filter === f.id ? '#fff' : 'var(--text-secondary)',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-base)',
+              color: 'var(--text-primary)',
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: 'pointer',
+              outline: 'none',
+              appearance: 'auto'
+            }}
+          >
+            <option value="today">Hari Ini</option>
+            <option value="week">Minggu Ini</option>
+            <option value="month">Bulan Ini</option>
+            <option value="all">Semua</option>
+            <option value="custom">Pilih Tanggal...</option>
+          </select>
           
           <div style={{ display: 'inline-flex', background: 'var(--bg-base)', borderRadius: 8, padding: 4, border: '1px solid var(--border-subtle)' }}>
             {['Semua', 'Studio', 'Photobooth'].map(tab => (
