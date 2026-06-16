@@ -418,7 +418,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
       {/* Header & Filter */}
-      <div style={{ padding: '24px 32px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+      <div style={{ padding: '16px 24px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <div className="page-header" style={{ marginBottom: 0, paddingBottom: 16 }}>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', margin: 0, color: 'var(--text-primary)' }}>
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -426,12 +426,12 @@ export default function Transaksi({ user, orgId, userMeta }) {
           </h1>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>Pantau status pesanan dan rekap pendapatan harian</p>
         </div>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '6px 12px', borderRadius: 8, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent', transition: 'all 0.2s' }}>
             <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} style={{ accentColor: '#ef4444', width: 16, height: 16, cursor: 'pointer' }} />
             Sampah
           </label>
-          <div style={{ display: 'flex', gap: 8, background: 'var(--bg-base)', padding: 6, borderRadius: 12, border: '1px solid var(--border-subtle)', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, background: 'var(--bg-base)', padding: 6, borderRadius: 12, border: '1px solid var(--border-subtle)', alignItems: 'center', flexWrap: 'wrap' }}>
             {[
             { id: 'today', label: 'Hari Ini' },
             { id: 'week', label: 'Minggu Ini' },
@@ -480,7 +480,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
       </div>
 
       {/* --- FILTER TAB --- */}
-      <div style={{ padding: '16px 32px 16px', background: 'var(--bg-base)' }}>
+      <div style={{ padding: '16px 24px', background: 'var(--bg-base)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
            <div style={{ display: 'inline-flex', background: 'var(--bg-surface)', borderRadius: 8, padding: 4, border: '1px solid var(--border-subtle)' }}>
              {['Semua', 'Studio', 'Photobooth'].map(tab => (
                <button
@@ -501,7 +501,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
       </div>
 
       {/* Content Area */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 32 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 16px' }}>
         
         {/* Executive Dashboard Section */}
         {!loading && transactions.length > 0 && (
@@ -655,15 +655,17 @@ export default function Transaksi({ user, orgId, userMeta }) {
                   <div 
                     onClick={() => setExpandedId(isExpanded ? null : tx.id)}
                     style={{ 
-                      padding: '20px 24px', 
+                      padding: '16px', 
                       display: 'flex', 
+                      flexWrap: 'wrap',
+                      gap: 16,
                       justifyContent: 'space-between', 
                       alignItems: 'center',
                       cursor: 'pointer',
                       background: isExpanded ? 'var(--bg-base)' : 'transparent'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: '1 1 250px' }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent-subtle)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                         {tx.paymentMethod === 'transfer' ? '💳' : '💵'}
                       </div>
@@ -676,8 +678,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{formattedDate} • {tx.transactionNumber}</div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-                      <div style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, flex: '1 1 200px', justifyContent: 'space-between' }}>
+                      <div style={{ textAlign: 'left' }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>{formatRupiah(tx.total)}</div>
                         <div style={{ 
                           fontSize: 10, fontWeight: 800, 
@@ -713,8 +715,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
                   {/* Card Body (Expanded Detail) */}
                   {isExpanded && (
-                    <div style={{ padding: '24px', borderTop: '1px solid var(--border-subtle)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+                    <div style={{ padding: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
                         {/* Kolom Kiri: Detail Items */}
                         <div>
                           <h4 style={{ fontSize: 14, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Item Transaksi</h4>
