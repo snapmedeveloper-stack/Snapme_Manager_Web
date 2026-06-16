@@ -442,6 +442,21 @@ export default function Transaksi({ user, orgId, userMeta }) {
     };
   }, [transactions, packages, addOns, templates, customSections, bookingsData, photobooths, filterTab, filter]);
 
+  const getPeriodeLabel = () => {
+    if (filter === 'all') return 'Semua Waktu';
+    if (filter === 'custom') return customDate;
+    if (filter === 'today' && startDate) {
+      return 'Hari Ini (' + startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ')';
+    }
+    if (startDate) {
+      const startStr = startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      const endStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (filter === 'week') return 'Minggu Ini (' + startStr + ' - ' + endStr + ')';
+      if (filter === 'month') return 'Bulan Ini (' + startStr + ' - ' + endStr + ')';
+    }
+    return '';
+  };
+
   return (
     <>
       <div className="page-enter no-print" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
@@ -919,7 +934,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
         <div style={{ textAlign: 'center', marginBottom: 30, borderBottom: '2px solid #0f172a', paddingBottom: 20 }}>
           <h1 style={{ margin: '0 0 8px 0', fontSize: 24, color: '#0f172a' }}>Laporan Rekapitulasi Snapme</h1>
           <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
-            Periode: {filter === 'today' ? 'Hari Ini' : filter === 'week' ? 'Minggu Ini' : filter === 'month' ? 'Bulan Ini' : filter === 'custom' ? customDate : 'Semua Waktu'} 
+            Periode: {getPeriodeLabel()} 
             {' | '}
             Kategori Filter: {filterTab}
           </p>
