@@ -1,21 +1,9 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
-const PdfPrinter = require("pdfmake");
+const PDFDocument = require("pdfkit");
 
 admin.initializeApp();
-
-// Gunakan VFS Fonts (Roboto) yang sudah dibundel dalam pdfmake
-const vfsFonts = require('pdfmake/build/vfs_fonts');
-const fonts = {
-  Roboto: {
-    normal: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Regular.ttf'], 'base64'),
-    bold: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Medium.ttf'], 'base64'),
-    italics: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Italic.ttf'], 'base64'),
-    bolditalics: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-MediumItalic.ttf'], 'base64')
-  }
-};
-const printer = new PdfPrinter(fonts);
 
 exports.generateReport = functions
   .region('asia-southeast2')
@@ -26,7 +14,7 @@ exports.generateReport = functions
   if (!orgId) throw new functions.https.HttpsError('invalid-argument', 'orgId is required');
 
   const db = admin.firestore();
-  console.log(`[generateReport] START orgId=${orgId} filter=${filterTab} start=${startMillis} end=${endMillis}`);
+  console.log(`[generateReport] START orgId=${orgId} filter=${filterTab}`);
 
   try {
     // 1. Fetch Transactions
@@ -41,8 +29,6 @@ exports.generateReport = functions
     }
 
     const txSnap = await q.get();
-    console.log(`[generateReport] Fetched ${txSnap.size} transactions`);
-
     const txs = [];
     const bIds = new Set();
     txSnap.forEach(d => {
@@ -52,6 +38,7 @@ exports.generateReport = functions
         if (td.bookingId) bIds.add(td.bookingId);
       }
     });
+    console.log(`[generateReport] Fetched ${txs.length} active transactions`);
 
     // 2. Fetch Bookings in batches of 30
     const bookingsData = {};
@@ -63,7 +50,6 @@ exports.generateReport = functions
         .get();
       bSnap.forEach(d => { bookingsData[d.id] = { id: d.id, ...d.data() }; });
     }
-    console.log(`[generateReport] Fetched ${Object.keys(bookingsData).length} bookings`);
 
     // 3. Fetch Catalogs
     const pbSnap = await db.collection(`organizations/${orgId}/photobooths`).get();
@@ -80,6 +66,7 @@ exports.generateReport = functions
     let totalTunai = 0, totalTransfer = 0, transactionCount = 0;
     const dataMap = new Map();
     const filteredTxs = [];
+    const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
     txs.forEach(tx => {
       const bData = bookingsData[tx.bookingId];
@@ -103,7 +90,6 @@ exports.generateReport = functions
       });
 
       const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
-      const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
       const label = `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]}`;
       const sortKey = d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
       if (!dataMap.has(label)) dataMap.set(label, { name: label, Transaksi: 0, sortKey });
@@ -115,7 +101,6 @@ exports.generateReport = functions
       const tB = b.createdAt ? b.createdAt.toMillis() : 0;
       return tB - tA;
     });
-    console.log(`[generateReport] Filtered to ${filteredTxs.length} txs, revenue=${totalNominal}`);
 
     const sortedChartData = Array.from(dataMap.values()).sort((a, b) => a.sortKey - b.sortKey);
     const pieData = [
@@ -124,13 +109,14 @@ exports.generateReport = functions
       { name: 'Lainnya', value: totalCustom }
     ].filter(d => d.value > 0);
 
-    // 5. Generate Charts via QuickChart API
-    let barChartBase64 = null;
-    let pieChartBase64 = null;
+    console.log(`[generateReport] Filtered=${filteredTxs.length} txs, revenue=${totalNominal}`);
+
+    // 5. Generate Charts via QuickChart
+    let barChartBuf = null;
+    let pieChartBuf = null;
 
     try {
       if (sortedChartData.length > 0) {
-        console.log(`[generateReport] Requesting bar chart for ${sortedChartData.length} data points`);
         const barRes = await axios.post('https://quickchart.io/chart', {
           chart: {
             type: 'bar',
@@ -140,10 +126,10 @@ exports.generateReport = functions
             },
             options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
           },
-          width: 580, height: 270, format: 'png', backgroundColor: 'white'
+          width: 500, height: 240, format: 'png', backgroundColor: 'white'
         }, { responseType: 'arraybuffer', timeout: 20000 });
-        barChartBase64 = 'data:image/png;base64,' + Buffer.from(barRes.data).toString('base64');
-        console.log(`[generateReport] Bar chart generated OK`);
+        barChartBuf = Buffer.from(barRes.data);
+        console.log(`[generateReport] Bar chart OK (${barChartBuf.length} bytes)`);
       }
 
       if (pieData.length > 0) {
@@ -152,113 +138,134 @@ exports.generateReport = functions
             type: 'doughnut',
             data: {
               labels: pieData.map(d => d.name),
-              datasets: [{ data: pieData.map(d => d.value), backgroundColor: ['#f59e0b', '#8b5cf6', '#ec4899', '#10b981'] }]
+              datasets: [{ data: pieData.map(d => d.value), backgroundColor: ['#f59e0b','#8b5cf6','#ec4899','#10b981'] }]
             },
             options: { plugins: { legend: { position: 'right' } } }
           },
-          width: 360, height: 270, format: 'png', backgroundColor: 'white'
+          width: 340, height: 240, format: 'png', backgroundColor: 'white'
         }, { responseType: 'arraybuffer', timeout: 20000 });
-        pieChartBase64 = 'data:image/png;base64,' + Buffer.from(pieRes.data).toString('base64');
-        console.log(`[generateReport] Pie chart generated OK`);
+        pieChartBuf = Buffer.from(pieRes.data);
+        console.log(`[generateReport] Pie chart OK (${pieChartBuf.length} bytes)`);
       }
     } catch (chartErr) {
-      console.warn("[generateReport] Chart generation failed, continuing without charts:", chartErr.message);
+      console.warn('[generateReport] Chart generation failed:', chartErr.message);
     }
 
-    // 6. Build pdfmake document definition
+    // 6. Build PDF with pdfkit
     const formatRupiah = (num) => `Rp ${(num || 0).toLocaleString('id-ID')}`;
 
-    const chartColumns = [];
-    if (pieChartBase64) chartColumns.push({ image: pieChartBase64, width: 200 });
-    else chartColumns.push({ text: '' });
-    if (barChartBase64) chartColumns.push({ image: barChartBase64, width: 260 });
-    else chartColumns.push({ text: '' });
+    const doc = new PDFDocument({ size: 'A4', margins: { top: 40, bottom: 40, left: 40, right: 40 } });
+    const pageW = 515; // A4 width minus margins
 
-    const txTableBody = [
-      [
-        { text: 'Waktu', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
-        { text: 'Pelanggan', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
-        { text: 'No. Transaksi', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
-        { text: 'Kategori', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
-        { text: 'Total', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 }
-      ],
-      ...filteredTxs.map((tx, idx) => {
-        const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
-        const bg = idx % 2 === 1 ? '#f8fafc' : null;
-        const timeStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        return [
-          { text: timeStr, fontSize: 8, fillColor: bg },
-          { text: tx.customerName || '-', fontSize: 8, fillColor: bg },
-          { text: tx.transactionNumber || '-', fontSize: 8, fillColor: bg },
-          { text: tx.isPb ? 'Photobooth' : 'Studio', fontSize: 8, fillColor: bg },
-          { text: formatRupiah(tx.total || 0), fontSize: 8, bold: true, fillColor: bg }
-        ];
-      })
-    ];
+    // Header
+    doc.font('Helvetica-Bold').fontSize(18).text('Laporan Rekapitulasi Snapme', { align: 'center' });
+    doc.font('Helvetica').fontSize(10).fillColor('#475569').text(`Periode: ${periodeLabel || '-'} | Kategori: ${filterTab}`, { align: 'center' });
+    doc.fontSize(9).fillColor('#94a3b8').text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, { align: 'center' });
+    doc.moveDown(1.5);
 
-    const docDefinition = {
-      defaultStyle: { font: 'Roboto', fontSize: 10 },
-      pageSize: 'A4',
-      pageMargins: [40, 40, 40, 40],
-      content: [
-        { text: 'Laporan Rekapitulasi Snapme', fontSize: 18, bold: true, alignment: 'center', margin: [0,0,0,4] },
-        { text: `Periode: ${periodeLabel || '-'} | Kategori: ${filterTab}`, alignment: 'center', color: '#475569', fontSize: 10, margin: [0,0,0,4] },
-        { text: `Dicetak: ${new Date().toLocaleString('id-ID')}`, alignment: 'center', color: '#94a3b8', fontSize: 9, margin: [0,0,0,16] },
+    // KPI Table
+    const kpiCols = 4;
+    const kpiW = pageW / kpiCols;
+    const kpiLabels = ['Total Pendapatan', 'Total Transaksi', 'Transfer / QR', 'Tunai'];
+    const kpiValues = [formatRupiah(totalNominal), `${transactionCount}`, formatRupiah(totalTransfer), formatRupiah(totalTunai)];
+    const kpiStartY = doc.y;
 
-        // KPI Boxes
-        {
-          table: {
-            widths: ['*','*','*','*'],
-            body: [
-              [
-                { text: 'Total Pendapatan', bold: true, fillColor: '#f1f5f9', alignment: 'center', fontSize: 9 },
-                { text: 'Total Transaksi', bold: true, fillColor: '#f1f5f9', alignment: 'center', fontSize: 9 },
-                { text: 'Transfer / QR', bold: true, fillColor: '#f1f5f9', alignment: 'center', fontSize: 9 },
-                { text: 'Tunai', bold: true, fillColor: '#f1f5f9', alignment: 'center', fontSize: 9 }
-              ],
-              [
-                { text: formatRupiah(totalNominal), alignment: 'center', margin: [0,6,0,6], bold: true, color: '#10b981', fontSize: 11 },
-                { text: `${transactionCount}`, alignment: 'center', margin: [0,6,0,6], bold: true, fontSize: 11 },
-                { text: formatRupiah(totalTransfer), alignment: 'center', margin: [0,6,0,6] },
-                { text: formatRupiah(totalTunai), alignment: 'center', margin: [0,6,0,6] }
-              ]
-            ]
-          },
-          layout: 'lightHorizontalLines',
-          margin: [0,0,0,20]
-        },
-
-        // Charts (if available)
-        ...(barChartBase64 || pieChartBase64 ? [{
-          columns: chartColumns,
-          columnGap: 10,
-          margin: [0,0,0,24]
-        }] : []),
-
-        // Transaction Table
-        { text: 'Rincian Transaksi', fontSize: 13, bold: true, margin: [0,0,0,10] },
-        {
-          table: {
-            headerRows: 1,
-            widths: [55, '*', 80, 55, 70],
-            body: txTableBody
-          },
-          layout: 'lightHorizontalLines'
-        }
-      ]
-    };
-
-    console.log(`[generateReport] Generating PDF with ${filteredTxs.length} rows...`);
-    const pdfDoc = printer.createPdfKitDocument(docDefinition);
-    const chunks = [];
-    const pdfBase64 = await new Promise((resolve, reject) => {
-      pdfDoc.on('data', chunk => chunks.push(chunk));
-      pdfDoc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
-      pdfDoc.on('error', reject);
-      pdfDoc.end();
+    // Draw header row
+    doc.rect(40, kpiStartY, pageW, 22).fill('#f1f5f9');
+    kpiLabels.forEach((label, i) => {
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#334155')
+        .text(label, 40 + i * kpiW, kpiStartY + 7, { width: kpiW, align: 'center' });
     });
 
-    console.log(`[generateReport] PDF generated successfully, size=${Math.round(pdfBase64.length / 1024)}KB`);
+    // Draw value row
+    const kpiValY = kpiStartY + 22;
+    doc.rect(40, kpiValY, pageW, 26).stroke('#e2e8f0');
+    kpiValues.forEach((val, i) => {
+      const color = i === 0 ? '#10b981' : '#0f172a';
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(color)
+        .text(val, 40 + i * kpiW, kpiValY + 8, { width: kpiW, align: 'center' });
+    });
+
+    doc.y = kpiValY + 36;
+    doc.moveDown(1);
+
+    // Charts
+    const chartStartY = doc.y;
+    if (pieChartBuf && barChartBuf) {
+      doc.image(pieChartBuf, 40, chartStartY, { width: 230 });
+      doc.image(barChartBuf, 280, chartStartY, { width: 275 });
+      doc.y = chartStartY + 185;
+      doc.moveDown(1);
+    } else if (barChartBuf) {
+      doc.image(barChartBuf, 40, chartStartY, { width: 450 });
+      doc.y = chartStartY + 200;
+      doc.moveDown(1);
+    }
+
+    // Transaction Table title
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#0f172a').text('Rincian Transaksi');
+    doc.moveDown(0.5);
+
+    // Table header
+    const colWidths = [60, 160, 90, 65, 80];
+    const colHeaders = ['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Total'];
+    let tableX = 40;
+    const headerY = doc.y;
+
+    doc.rect(tableX, headerY, pageW, 18).fill('#0f172a');
+    colHeaders.forEach((h, i) => {
+      const x = tableX + colWidths.slice(0, i).reduce((a, b) => a + b, 0);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff')
+        .text(h, x + 4, headerY + 5, { width: colWidths[i] - 8 });
+    });
+
+    let rowY = headerY + 18;
+
+    filteredTxs.forEach((tx, idx) => {
+      const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
+      const timeStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      const rowData = [
+        timeStr,
+        tx.customerName || '-',
+        tx.transactionNumber || '-',
+        tx.isPb ? 'Photobooth' : 'Studio',
+        formatRupiah(tx.total || 0)
+      ];
+
+      // Check if need new page
+      if (rowY + 18 > doc.page.height - 50) {
+        doc.addPage();
+        rowY = 40;
+      }
+
+      const bgColor = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
+      doc.rect(40, rowY, pageW, 16).fill(bgColor);
+
+      rowData.forEach((val, i) => {
+        const x = tableX + colWidths.slice(0, i).reduce((a, b) => a + b, 0);
+        const isBold = i === 4;
+        doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor('#0f172a')
+          .text(String(val), x + 4, rowY + 4, { width: colWidths[i] - 8, ellipsis: true, lineBreak: false });
+      });
+
+      // Row bottom border
+      doc.moveTo(40, rowY + 16).lineTo(555, rowY + 16).stroke('#e2e8f0');
+      rowY += 16;
+    });
+
+    console.log(`[generateReport] PDF built, converting to base64...`);
+
+    // 7. Return PDF as base64
+    const pdfBase64 = await new Promise((resolve, reject) => {
+      const chunks = [];
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+      doc.on('error', reject);
+      doc.end();
+    });
+
+    console.log(`[generateReport] Done! PDF size=${Math.round(pdfBase64.length / 1024)}KB`);
+
     return {
       success: true,
       pdfBase64,
