@@ -550,8 +550,6 @@ export default function Transaksi({ user, orgId, userMeta }) {
           logging: true
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        
         const pdf = new jsPDF({
           orientation: 'portrait',
           unit: 'mm',
@@ -559,22 +557,47 @@ export default function Transaksi({ user, orgId, userMeta }) {
         });
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pageHeightMm = pdf.internal.pageSize.getHeight();
         
-        let heightLeft = pdfHeight;
-        let position = 0;
+        // Tinggi 1 halaman A4 dalam piksel canvas
+        const pageHeightPx = Math.floor(canvas.width * (pageHeightMm / pdfWidth));
 
-        // Render halaman pertama
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+        let currentY = 0;
+        let isFirstPage = true;
 
-        // Jika gambar masih lebih tinggi dari halaman, tambahkan halaman baru
-        while (heightLeft > 0) {
-          position = heightLeft - pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pageHeight;
+        while (currentY < canvas.height) {
+          if (!isFirstPage) {
+            pdf.addPage();
+          }
+          isFirstPage = false;
+
+          const remainingHeightPx = canvas.height - currentY;
+          const currentSliceHeightPx = Math.min(pageHeightPx, remainingHeightPx);
+
+          // Buat canvas sementara untuk potongan halaman ini
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = currentSliceHeightPx;
+          const ctx = sliceCanvas.getContext('2d');
+
+          // Isi background putih
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+
+          // Salin potongan dari canvas utama ke canvas sementara
+          ctx.drawImage(
+            canvas,
+            0, currentY, canvas.width, currentSliceHeightPx, // Source
+            0, 0, sliceCanvas.width, currentSliceHeightPx    // Destination
+          );
+
+          const sliceData = sliceCanvas.toDataURL('image/jpeg', 1.0);
+          const sliceHeightMm = (currentSliceHeightPx * pdfWidth) / canvas.width;
+
+          // Tambahkan potongan ke PDF tepat di koordinat Y=0
+          pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, sliceHeightMm);
+
+          currentY += pageHeightPx;
         }
 
         const pdfBlob = pdf.output('blob');
