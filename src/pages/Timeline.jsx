@@ -286,12 +286,6 @@ const Timeline = ({ orgId, user }) => {
         
         const newScroll = (timeAtMouseHr * newZoom) - anchorX;
         setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollLeft = newScroll; }, 0);
-      } else {
-        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-        e.preventDefault();
-        if (scrollRef.current) {
-          scrollRef.current.scrollLeft += e.deltaY;
-        }
       }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
