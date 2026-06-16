@@ -880,14 +880,11 @@ const Timeline = ({ orgId, user }) => {
           </div>
         </div>
 
-        <div className="arrived-bar" onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }} onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}>
+        <div className="arrived-bar">
           <div
             className={`arrived-bar-btn${hasArrived ? ' arrived-bar-btn-active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggleArrived(booking);
-            }}
-            title={hasArrived ? 'Klik untuk batalkan kedatangan' : 'Tandai Customer Datang'}
+            style={{ pointerEvents: 'none', cursor: 'default' }}
+            title={hasArrived ? 'Customer sudah datang' : 'Customer belum datang'}
           >
             {hasArrived ? 'Datang' : 'Belum Datang'}
           </div>
