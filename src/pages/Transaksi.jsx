@@ -536,11 +536,17 @@ export default function Transaksi({ user, orgId, userMeta }) {
         // Tunggu sedikit agar gambar/font ter-render
         await new Promise(resolve => setTimeout(resolve, 800));
 
+        // Ukur tinggi total elemen untuk mencegah pemotongan (clipping)
+        const totalHeight = clone.scrollHeight;
+
         // Render Canvas
         const canvas = await html2canvas(clone, {
           scale: 2, // Kualitas tinggi
           useCORS: true,
+          width: 794,
+          height: totalHeight,
           windowWidth: 794,
+          windowHeight: totalHeight,
           logging: true
         });
 
