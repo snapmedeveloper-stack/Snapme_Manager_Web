@@ -309,7 +309,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
   };
 
   // Hitung Rekap & Chart Data
-  const { summary, chartData, pieData } = useMemo(() => {
+  const { summary, chartData, pieData, busyHoursData, studioSummary, pbSummary } = useMemo(() => {
     let totalBokingan = 0;
     let totalNominal = 0;
     let totalPaket = 0;
@@ -320,7 +320,11 @@ export default function Transaksi({ user, orgId, userMeta }) {
     let totalTransfer = 0;
     let transactionCount = 0;
 
+    let studioSummary = { revenue: 0, count: 0, aov: 0 };
+    let pbSummary = { revenue: 0, count: 0, aov: 0 };
+
     const dataMap = new Map();
+    const busyHoursMap = new Map();
 
     transactions.forEach(tx => {
       if (tx.isDeleted) return; // ABAIKAN TRANSAKSI YANG DIHAPUS
@@ -335,6 +339,14 @@ export default function Transaksi({ user, orgId, userMeta }) {
       if (tx.bookingId) totalBokingan++;
       const txTotal = tx.total || 0;
       totalNominal += txTotal;
+      
+      if (isPb) {
+        pbSummary.revenue += txTotal;
+        pbSummary.count++;
+      } else {
+        studioSummary.revenue += txTotal;
+        studioSummary.count++;
+      }
       
       if (tx.paymentMethod === 'transfer') totalTransfer += txTotal;
       else totalTunai += txTotal;
@@ -366,6 +378,10 @@ export default function Transaksi({ user, orgId, userMeta }) {
       const dateMillis = tx.createdAt?.toMillis ? tx.createdAt.toMillis() : Date.now();
       const d = new Date(dateMillis);
       let label = '';
+      
+      // Jam Sibuk Aggregation
+      const hourStr = `${d.getHours().toString().padStart(2, '0')}:00`;
+      busyHoursMap.set(hourStr, (busyHoursMap.get(hourStr) || 0) + 1);
       
       if (filter === 'today') {
         label = `${d.getHours().toString().padStart(2, '0')}:00`;
@@ -408,11 +424,21 @@ export default function Transaksi({ user, orgId, userMeta }) {
     ].filter(d => d.value > 0);
 
     const aov = transactionCount > 0 ? Math.round(totalNominal / transactionCount) : 0;
+    
+    studioSummary.aov = studioSummary.count > 0 ? Math.round(studioSummary.revenue / studioSummary.count) : 0;
+    pbSummary.aov = pbSummary.count > 0 ? Math.round(pbSummary.revenue / pbSummary.count) : 0;
+
+    const busyHoursData = Array.from(busyHoursMap.entries())
+      .map(([hour, count]) => ({ hour, Transaksi: count }))
+      .sort((a, b) => a.hour.localeCompare(b.hour));
 
     return { 
       summary: { totalBokingan, totalNominal, totalPaket, totalTambahan, totalCetak, totalCustom, totalTunai, totalTransfer, transactionCount, aov },
       chartData: sortedChartData,
-      pieData
+      pieData,
+      busyHoursData,
+      studioSummary,
+      pbSummary
     };
   }, [transactions, packages, addOns, templates, customSections, bookingsData, photobooths, filterTab, filter]);
 
@@ -425,10 +451,21 @@ export default function Transaksi({ user, orgId, userMeta }) {
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', margin: 0, color: 'var(--text-primary)' }}>
             Transaksi
           </h1>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '4px 8px', borderRadius: 6, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent' }}>
-            <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} style={{ accentColor: '#ef4444', width: 14, height: 14, margin: 0, cursor: 'pointer' }} />
-            Sampah
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={() => window.print()}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.opacity = 0.8}
+              onMouseOut={e => e.currentTarget.style.opacity = 1}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Cetak Laporan
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '4px 8px', borderRadius: 6, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent' }}>
+              <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} style={{ accentColor: '#ef4444', width: 14, height: 14, margin: 0, cursor: 'pointer' }} />
+              Sampah
+            </label>
+          </div>
         </div>
 
         <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, whiteSpace: 'nowrap' }}>
@@ -619,6 +656,27 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
               </div>
             </div>
+
+            {/* Jam Sibuk Chart */}
+            <div style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: 24, border: '1px solid var(--border-subtle)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginTop: 24 }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>Analisis Jam Sibuk</h3>
+              <div style={{ height: 250 }}>
+                {busyHoursData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={busyHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                      <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
+                      <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }} />
+                      <Bar dataKey="Transaksi" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Belum ada data jam sibuk.</div>
+                )}
+              </div>
+            </div>
+
           </div>
         )}
         {loading ? (
@@ -813,6 +871,110 @@ export default function Transaksi({ user, orgId, userMeta }) {
             })}
           </div>
         )}
+      </div>
+
+      {/* ----------------- HIDDEN PRINT LAYOUT (PDF EXPORT) ----------------- */}
+      <div className="print-only" style={{ display: 'none' }}>
+        <style>{`
+          @media print {
+            body { background: white !important; margin: 0; padding: 0; }
+            .no-print { display: none !important; }
+            .print-only { 
+              display: block !important; 
+              width: 100%; 
+              padding: 20mm; 
+              box-sizing: border-box;
+              color: #000;
+              font-family: Arial, sans-serif;
+            }
+            .page-enter { display: none !important; }
+            .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .print-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #f8fafc; }
+            .print-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #475569; text-transform: uppercase; }
+            .print-card .stat { font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 4px; }
+            .print-card .sub-stat { font-size: 12px; color: #64748b; }
+            .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            .print-table th { background: #f1f5f9; padding: 10px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+            .print-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+            @page { size: A4 portrait; margin: 0; }
+          }
+        `}</style>
+        
+        <div style={{ textAlign: 'center', marginBottom: 30, borderBottom: '2px solid #0f172a', paddingBottom: 20 }}>
+          <h1 style={{ margin: '0 0 8px 0', fontSize: 24, color: '#0f172a' }}>Laporan Rekapitulasi Snapme</h1>
+          <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
+            Periode: {filter === 'today' ? 'Hari Ini' : filter === 'week' ? 'Minggu Ini' : filter === 'month' ? 'Bulan Ini' : filter === 'custom' ? customDate : 'Semua Waktu'} 
+            {' | '}
+            Kategori Filter: {filterTab}
+          </p>
+          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: 12 }}>Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
+        </div>
+
+        <div className="print-grid">
+          <div className="print-card" style={{ background: '#ecfdf5', borderColor: '#a7f3d0' }}>
+            <h4 style={{ color: '#047857' }}>Studio Performa</h4>
+            <div className="stat">{formatRupiah(studioSummary.revenue)}</div>
+            <div className="sub-stat">{studioSummary.count} Transaksi | AOV: {formatRupiah(studioSummary.aov)}</div>
+          </div>
+          <div className="print-card" style={{ background: '#faf5ff', borderColor: '#e9d5ff' }}>
+            <h4 style={{ color: '#7e22ce' }}>Photobooth Performa</h4>
+            <div className="stat">{formatRupiah(pbSummary.revenue)}</div>
+            <div className="sub-stat">{pbSummary.count} Transaksi | AOV: {formatRupiah(pbSummary.aov)}</div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
+          <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>Analisis Jam Sibuk</h3>
+          {busyHoursData.length > 0 ? (
+            <div style={{ height: 250, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={busyHoursData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} dy={5} />
+                  <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+                  <Bar dataKey="Transaksi" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic' }}>Tidak ada data jam sibuk pada periode ini.</div>
+          )}
+        </div>
+
+        <div>
+          <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>Rincian Transaksi</h3>
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Pelanggan</th>
+                <th>No. Transaksi</th>
+                <th>Kategori</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.filter(tx => !tx.isDeleted).map(tx => {
+                const bData = tx.bookingId ? bookingsData[tx.bookingId] : null;
+                const isPb = bData && photobooths.includes(bData.studio);
+                if (filterTab === 'Studio' && isPb) return null;
+                if (filterTab === 'Photobooth' && !isPb) return null;
+
+                const dateMillis = tx.createdAt?.toMillis ? tx.createdAt.toMillis() : Date.now();
+                const d = new Date(dateMillis);
+                return (
+                  <tr key={tx.id}>
+                    <td>{`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`}</td>
+                    <td style={{ fontWeight: 'bold' }}>{tx.customerName}</td>
+                    <td style={{ fontFamily: 'monospace', color: '#475569' }}>{tx.transactionNumber}</td>
+                    <td>{isPb ? 'Photobooth' : 'Studio'}</td>
+                    <td style={{ fontWeight: 'bold' }}>{formatRupiah(tx.total || 0)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Custom Confirmation Modal */}
