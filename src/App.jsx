@@ -139,7 +139,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard orgId={orgId} />} />
           <Route path="/timeline" element={<Timeline orgId={orgId} user={user} />} />
-          <Route path="/transaksi" element={<Transaksi orgId={orgId} />} />
+          <Route path="/transaksi" element={<Transaksi orgId={orgId} user={user} />} />
         </Routes>
       </Layout>
     </Router>
