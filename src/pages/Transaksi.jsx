@@ -508,8 +508,11 @@ export default function Transaksi({ user, orgId, userMeta }) {
     setTimeout(async () => {
       let clone = null;
       try {
-        const html2pdfModule = await import('html2pdf.js');
-        const html2pdf = html2pdfModule.default || html2pdfModule;
+        const html2canvasModule = await import('html2canvas');
+        const html2canvas = html2canvasModule.default || html2canvasModule;
+        
+        const jspdfModule = await import('jspdf');
+        const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
 
         const originalElement = document.getElementById('pdf-report-content');
         if (!originalElement) return;
@@ -518,7 +521,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
         clone = originalElement.cloneNode(true);
         clone.id = 'pdf-report-clone';
         clone.style.display = 'block';
-        clone.style.position = 'absolute';
+        clone.style.position = 'fixed';
         clone.style.top = '0px';
         clone.style.left = '0px';
         clone.style.width = '794px';
@@ -529,17 +532,34 @@ export default function Transaksi({ user, orgId, userMeta }) {
         clone.style.opacity = '1';
         
         document.body.appendChild(clone);
-        
-        const opt = {
-          margin: 0,
-          filename: `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-          image: { type: 'jpeg', quality: 1.0 },
-          html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 794 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
 
-        const pdfBlob = await html2pdf().set(opt).from(clone).output('blob');
-        const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+        // Tunggu sedikit agar gambar/font ter-render
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Render Canvas
+        const canvas = await html2canvas(clone, {
+          scale: 2, // Kualitas tinggi
+          useCORS: true,
+          windowWidth: 794,
+          logging: true
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+        const pdfBlob = pdf.output('blob');
+        const filename = `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
         
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -552,7 +572,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
           const url = URL.createObjectURL(pdfBlob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = opt.filename;
+          a.download = filename;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
