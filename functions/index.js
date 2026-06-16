@@ -115,14 +115,15 @@ exports.generateReport = functions
         else totalCustom += itemTotal;
       });
 
-      const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
+      const rawMs = tx.createdAt ? tx.createdAt.toMillis() : Date.now();
+      const d = new Date(rawMs + 8 * 3600 * 1000); // Shift to WITA (UTC+8)
       let label, sortKey;
       if (isHourly) {
-        label = `${d.getHours().toString().padStart(2,'0')}:00`;
-        sortKey = d.getHours();
+        label = `${d.getUTCHours().toString().padStart(2,'0')}:00`;
+        sortKey = d.getUTCHours();
       } else {
-        label = `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]}`;
-        sortKey = d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
+        label = `${d.getUTCDate().toString().padStart(2,'0')} ${months[d.getUTCMonth()]}`;
+        sortKey = d.getUTCFullYear() * 10000 + d.getUTCMonth() * 100 + d.getUTCDate();
       }
 
       if (!dataMap.has(label)) dataMap.set(label, { name: label, Transaksi: 0, sortKey });
@@ -187,9 +188,12 @@ exports.generateReport = functions
     const doc = new PDFDocument({ size: 'A4', margins: { top: 40, bottom: 40, left: 40, right: 40 } });
     const pageW = 515;
 
+    const dPrint = new Date(Date.now() + 8 * 3600 * 1000);
+    const printDateStr = `${dPrint.getUTCDate().toString().padStart(2,'0')}/${(dPrint.getUTCMonth()+1).toString().padStart(2,'0')}/${dPrint.getUTCFullYear()} ${dPrint.getUTCHours().toString().padStart(2,'0')}:${dPrint.getUTCMinutes().toString().padStart(2,'0')} WITA`;
+
     doc.font('Helvetica-Bold').fontSize(18).fillColor('#0f172a').text('Laporan Rekapitulasi Snapme', { align: 'center' });
     doc.font('Helvetica').fontSize(10).fillColor('#475569').text(`Periode: ${periodeLabel || '-'} | Kategori: ${filterTab || 'Semua'}`, { align: 'center' });
-    doc.fontSize(9).fillColor('#94a3b8').text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, { align: 'center' });
+    doc.fontSize(9).fillColor('#94a3b8').text(`Dicetak: ${printDateStr}`, { align: 'center' });
     doc.moveDown(1.5);
 
     // KPI row
@@ -244,9 +248,10 @@ exports.generateReport = functions
         doc.addPage();
         rowY = 40;
       }
-      const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
+      const rawMs = tx.createdAt ? tx.createdAt.toMillis() : Date.now();
+      const d = new Date(rawMs + 8 * 3600 * 1000); // Shift to WITA (UTC+8)
       const cells = [
-        `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`,
+        `${d.getUTCDate().toString().padStart(2,'0')}/${(d.getUTCMonth()+1).toString().padStart(2,'0')} ${d.getUTCHours().toString().padStart(2,'0')}:${d.getUTCMinutes().toString().padStart(2,'0')}`,
         tx.customerName || '-',
         tx.transactionNumber || '-',
         tx.isPb ? 'Photobooth' : 'Studio',
