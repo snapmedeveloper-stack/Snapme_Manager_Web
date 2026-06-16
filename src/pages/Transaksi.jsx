@@ -31,6 +31,13 @@ export default function Transaksi({ user, orgId, userMeta }) {
     let end = null;
     if (filter === 'today') {
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    } else if (filter === 'yesterday') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+    } else if (filter === 'day_before') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2, 23, 59, 59, 999);
     } else if (filter === 'week') {
       start = new Date(now);
       const day = now.getDay();
@@ -384,7 +391,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
       const isCustomOneDay = filter === 'custom' && customStartDate && customEndDate && customStartDate === customEndDate;
       const isCustomMultiDay = filter === 'custom' && (!isCustomOneDay);
 
-      if (filter === 'today' || isCustomOneDay) {
+      if (filter === 'today' || filter === 'yesterday' || filter === 'day_before' || isCustomOneDay) {
         label = `${d.getHours().toString().padStart(2, '0')}:00`;
       } else if (filter === 'week') {
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -398,7 +405,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
       if (!dataMap.has(label)) {
         let sortKey = 0;
-        if (filter === 'today' || isCustomOneDay) sortKey = label;
+        if (filter === 'today' || filter === 'yesterday' || filter === 'day_before' || isCustomOneDay) sortKey = label;
         else if (filter === 'week') {
            const dayOrder = { 'Senin':1, 'Selasa':2, 'Rabu':3, 'Kamis':4, 'Jumat':5, 'Sabtu':6, 'Minggu':7 };
            sortKey = dayOrder[label];
@@ -455,6 +462,12 @@ export default function Transaksi({ user, orgId, userMeta }) {
     }
     if (filter === 'today' && startDate) {
       return 'Hari Ini (' + startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ')';
+    }
+    if (filter === 'yesterday' && startDate) {
+      return 'Kemarin (' + startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ')';
+    }
+    if (filter === 'day_before' && startDate) {
+      return 'Kemarin Lusa (' + startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ')';
     }
     if (startDate) {
       const startStr = startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -534,6 +547,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
               }}
             >
               <option value="today">Hari Ini</option>
+              <option value="yesterday">Kemarin</option>
+              <option value="day_before">Kemarin Lusa</option>
               <option value="week">Minggu Ini</option>
               <option value="month">Bulan Ini</option>
               <option value="all">Semua</option>
@@ -680,7 +695,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
             {/* Jam Sibuk / Hari Sibuk Chart */}
             <div style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: 24, border: '1px solid var(--border-subtle)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginTop: 24 }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>
-                {filter === 'today' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
+                {filter === 'today' || filter === 'yesterday' || filter === 'day_before' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
                   ? 'Analisis Jam Sibuk' 
                   : (filter === 'week' || filter === 'month' || filter === 'custom') 
                   ? 'Analisis Hari Sibuk' 
@@ -974,7 +989,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
         <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>
-            {filter === 'today' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
+            {filter === 'today' || filter === 'yesterday' || filter === 'day_before' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
               ? 'Analisis Jam Sibuk' 
               : (filter === 'week' || filter === 'month' || filter === 'custom') 
               ? 'Analisis Hari Sibuk' 
