@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function Transaksi({ user, orgId, userMeta }) {
@@ -501,158 +502,32 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
   const handleShareReport = async () => {
     setIsGeneratingPdf(true);
-    const scrollPos = window.scrollY;
-    window.scrollTo(0, 0); // Gulir ke atas agar elemen absolute berada tepat di tangkapan layar
-    
-    // Beri jeda 1.5 detik agar React dan Recharts selesai merender grafik
-    setTimeout(async () => {
-      let clone = null;
-      let wrapper = null;
-      try {
-        const html2canvasModule = await import('html2canvas');
-        const html2canvas = html2canvasModule.default || html2canvasModule;
-        
-        const autotableModule = await import('jspdf-autotable');
-        const autoTable = autotableModule.default || autotableModule;
+    try {
+      const functions = getFunctions(db.app, 'asia-southeast2');
+      const generateReportFn = httpsCallable(functions, 'generateReport');
+      
+      const startMillis = startDate ? startDate.getTime() : null;
+      const endMillis = endDate ? endDate.getTime() : null;
 
-        const originalElement = document.getElementById('pdf-report-header');
-        if (!originalElement) return;
+      const res = await generateReportFn({
+        orgId,
+        startMillis,
+        endMillis,
+        filterTab,
+        periodeLabel: getPeriodeLabel()
+      });
 
-        const originalHtmlOverflow = document.documentElement.style.overflow;
-        const originalHtmlHeight = document.documentElement.style.height;
-        const originalBodyOverflow = document.body.style.overflow;
-        const originalBodyHeight = document.body.style.height;
-
-        document.documentElement.style.overflow = 'visible';
-        document.documentElement.style.height = 'auto';
-        document.body.style.overflow = 'visible';
-        document.body.style.height = 'auto';
-
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'absolute';
-        wrapper.style.top = '0px';
-        wrapper.style.left = '0px';
-        wrapper.style.width = '794px';
-        wrapper.style.zIndex = '999999';
-        wrapper.style.background = 'white';
-
-        // Clone hanya bagian header dan grafik
-        clone = originalElement.cloneNode(true);
-        clone.id = 'pdf-report-clone';
-        clone.style.display = 'block';
-        clone.style.position = 'relative'; 
-        clone.style.width = '100%';
-        clone.style.background = 'white';
-        clone.style.padding = '40px';
-        clone.style.paddingBottom = '20px'; // Kurangi jarak bawah karena ada autotable
-        clone.style.boxSizing = 'border-box';
-        clone.style.opacity = '1';
-        clone.className = 'pdf-mode'; // Agar CSS diaplikasikan
-        
-        wrapper.appendChild(clone);
-        document.body.appendChild(wrapper);
-
-        // Tunggu sedikit agar chart selesai render
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        const totalHeight = wrapper.scrollHeight;
-
-        const canvas = await html2canvas(wrapper, {
-          scale: 2, 
-          useCORS: true,
-          width: 794,
-          height: totalHeight,
-          windowWidth: 794,
-          windowHeight: totalHeight,
-          logging: false
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const imgHeightMm = (canvas.height * pdfWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeightMm);
-
-        // Data transaksi untuk autoTable
-        const tableBody = transactions.filter(tx => !tx.isDeleted).map(tx => {
-            const bData = tx.bookingId ? bookingsData[tx.bookingId] : null;
-            const isPb = bData && photobooths.includes(bData.studio);
-            if (filterTab === 'Studio' && isPb) return null;
-            if (filterTab === 'Photobooth' && !isPb) return null;
-
-            const dateMillis = tx.createdAt?.toMillis ? tx.createdAt.toMillis() : Date.now();
-            const d = new Date(dateMillis);
-            const timeStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-            
-            return [
-                timeStr,
-                tx.customerName,
-                tx.transactionNumber,
-                isPb ? 'Photobooth' : 'Studio',
-                formatRupiah(tx.total || 0)
-            ];
-        }).filter(Boolean);
-
-        // Eksekusi autotable
-        const autoTableOptions = {
-            head: [['Waktu', 'Pelanggan', 'No. Transaksi', 'Kategori', 'Total']],
-            body: tableBody,
-            startY: imgHeightMm + 5,
-            margin: { top: 15, left: 15, right: 15, bottom: 15 },
-            styles: { fontSize: 9, font: 'helvetica' },
-            headStyles: { fillColor: [15, 23, 42], textColor: 255 },
-            alternateRowStyles: { fillColor: [248, 250, 252] }
-        };
-
-        if (typeof autoTable === 'function') {
-            autoTable(pdf, autoTableOptions);
-        } else if (pdf.autoTable) {
-            pdf.autoTable(autoTableOptions);
-        }
-
-        const pdfBlob = pdf.output('blob');
-        const filename = `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Laporan Snapme',
-            text: 'Berikut adalah laporan transaksi periode ' + getPeriodeLabel()
-          });
-        } else {
-          // Fallback untuk peramban desktop yang tidak mendukung share file
-          const url = URL.createObjectURL(pdfBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-      } catch (err) {
-        console.error("Gagal membuat/membagikan PDF:", err);
-        alert("Gagal membagikan laporan. Silakan coba lagi.");
-      } finally {
-        setIsGeneratingPdf(false);
-        if (wrapper && wrapper.parentNode) {
-          wrapper.parentNode.removeChild(wrapper);
-        }
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.height = originalHtmlHeight;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.height = originalBodyHeight;
-        window.scrollTo(0, scrollPos); // Kembalikan scroll
+      if (res.data && res.data.url) {
+        window.open(res.data.url, '_blank');
+      } else {
+        alert("Gagal mendapatkan link laporan.");
       }
-    }, 1500); // 1.5 detik jeda rendering grafik
+    } catch (err) {
+      console.error("Gagal membuat/membagikan PDF:", err);
+      alert("Gagal membagikan laporan. Silakan coba lagi.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
