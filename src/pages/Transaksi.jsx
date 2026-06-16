@@ -55,6 +55,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
       start.setHours(0, 0, 0, 0);
     } else if (filter === 'month') {
       start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (filter === 'last_month') {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
     } else if (filter === 'custom' && customStartDate && customEndDate) {
       start = new Date(customStartDate);
       start.setHours(0, 0, 0, 0);
@@ -405,7 +408,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
       } else if (filter === 'week' || filter === 'last_week') {
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         label = days[d.getDay()];
-      } else if (filter === 'month' || isCustomMultiDay) {
+      } else if (filter === 'month' || filter === 'last_month' || isCustomMultiDay) {
         label = `${d.getDate().toString().padStart(2, '0')} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][d.getMonth()]}`;
       } else {
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -418,7 +421,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
         else if (filter === 'week' || filter === 'last_week') {
            const dayOrder = { 'Senin':1, 'Selasa':2, 'Rabu':3, 'Kamis':4, 'Jumat':5, 'Sabtu':6, 'Minggu':7 };
            sortKey = dayOrder[label];
-        } else if (filter === 'month' || isCustomMultiDay) {
+        } else if (filter === 'month' || filter === 'last_month' || isCustomMultiDay) {
            // Create a clean timestamp for the start of the day to ensure consistent sorting
            sortKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
         } else {
@@ -482,6 +485,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
       const startStr = startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
       const endStr = endDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
       return `Minggu Lalu (${startStr} - ${endStr})`;
+    }
+    if (filter === 'last_month' && startDate) {
+      return `Bulan Lalu (${startDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })})`;
     }
     if (startDate) {
       const startStr = startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -566,6 +572,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
               <option value="week">Minggu Ini</option>
               <option value="last_week">Minggu Lalu</option>
               <option value="month">Bulan Ini</option>
+              <option value="last_month">Bulan Lalu</option>
               <option value="all">Semua</option>
               <option value="custom">Pilih Tanggal...</option>
             </select>
@@ -712,7 +719,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
               <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: 'var(--text-primary)' }}>
                 {filter === 'today' || filter === 'yesterday' || filter === 'day_before' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
                   ? 'Analisis Jam Sibuk' 
-                  : (filter === 'week' || filter === 'last_week' || filter === 'month' || filter === 'custom') 
+                  : (filter === 'week' || filter === 'last_week' || filter === 'month' || filter === 'last_month' || filter === 'custom') 
                   ? 'Analisis Hari Sibuk' 
                   : 'Analisis Waktu Sibuk'}
               </h3>
@@ -1006,7 +1013,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
           <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>
             {filter === 'today' || filter === 'yesterday' || filter === 'day_before' || (filter === 'custom' && customStartDate && customStartDate === customEndDate) 
               ? 'Analisis Jam Sibuk' 
-              : (filter === 'week' || filter === 'last_week' || filter === 'month' || filter === 'custom') 
+              : (filter === 'week' || filter === 'last_week' || filter === 'month' || filter === 'last_month' || filter === 'custom') 
               ? 'Analisis Hari Sibuk' 
               : 'Analisis Waktu Sibuk'}
           </h3>
