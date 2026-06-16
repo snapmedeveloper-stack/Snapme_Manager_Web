@@ -5,6 +5,18 @@ const PdfPrinter = require("pdfmake");
 
 admin.initializeApp();
 
+// Gunakan VFS Fonts (Roboto) yang sudah dibundel dalam pdfmake
+const vfsFonts = require('pdfmake/build/vfs_fonts');
+const fonts = {
+  Roboto: {
+    normal: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Regular.ttf'], 'base64'),
+    bold: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Medium.ttf'], 'base64'),
+    italics: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Italic.ttf'], 'base64'),
+    bolditalics: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-MediumItalic.ttf'], 'base64')
+  }
+};
+const printer = new PdfPrinter(fonts);
+
 exports.generateReport = functions
   .region('asia-southeast2')
   .runWith({ timeoutSeconds: 300, memory: '512MB' })
@@ -14,6 +26,7 @@ exports.generateReport = functions
   if (!orgId) throw new functions.https.HttpsError('invalid-argument', 'orgId is required');
 
   const db = admin.firestore();
+  console.log(`[generateReport] START orgId=${orgId} filter=${filterTab} start=${startMillis} end=${endMillis}`);
 
   try {
     // 1. Fetch Transactions
@@ -28,6 +41,8 @@ exports.generateReport = functions
     }
 
     const txSnap = await q.get();
+    console.log(`[generateReport] Fetched ${txSnap.size} transactions`);
+
     const txs = [];
     const bIds = new Set();
     txSnap.forEach(d => {
@@ -48,6 +63,7 @@ exports.generateReport = functions
         .get();
       bSnap.forEach(d => { bookingsData[d.id] = { id: d.id, ...d.data() }; });
     }
+    console.log(`[generateReport] Fetched ${Object.keys(bookingsData).length} bookings`);
 
     // 3. Fetch Catalogs
     const pbSnap = await db.collection(`organizations/${orgId}/photobooths`).get();
@@ -55,9 +71,6 @@ exports.generateReport = functions
 
     const pkgSnap = await db.collection(`organizations/${orgId}/packages`).get();
     const packages = pkgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    const aoSnap = await db.collection(`organizations/${orgId}/add_ons`).get();
-    const addOns = aoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     const tplSnap = await db.collection(`organizations/${orgId}/templates`).get();
     const templates = tplSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -90,7 +103,8 @@ exports.generateReport = functions
       });
 
       const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
-      const label = `${d.getDate().toString().padStart(2, '0')} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'][d.getMonth()]}`;
+      const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+      const label = `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]}`;
       const sortKey = d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
       if (!dataMap.has(label)) dataMap.set(label, { name: label, Transaksi: 0, sortKey });
       dataMap.get(label).Transaksi += 1;
@@ -101,12 +115,13 @@ exports.generateReport = functions
       const tB = b.createdAt ? b.createdAt.toMillis() : 0;
       return tB - tA;
     });
+    console.log(`[generateReport] Filtered to ${filteredTxs.length} txs, revenue=${totalNominal}`);
 
     const sortedChartData = Array.from(dataMap.values()).sort((a, b) => a.sortKey - b.sortKey);
     const pieData = [
       { name: 'Paket', value: totalPaket },
       { name: 'Cetak', value: totalCetak },
-      { name: 'Produk/Custom', value: totalCustom }
+      { name: 'Lainnya', value: totalCustom }
     ].filter(d => d.value > 0);
 
     // 5. Generate Charts via QuickChart API
@@ -115,6 +130,7 @@ exports.generateReport = functions
 
     try {
       if (sortedChartData.length > 0) {
+        console.log(`[generateReport] Requesting bar chart for ${sortedChartData.length} data points`);
         const barRes = await axios.post('https://quickchart.io/chart', {
           chart: {
             type: 'bar',
@@ -124,9 +140,10 @@ exports.generateReport = functions
             },
             options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
           },
-          width: 580, height: 280, format: 'png', backgroundColor: 'white'
-        }, { responseType: 'arraybuffer', timeout: 15000 });
+          width: 580, height: 270, format: 'png', backgroundColor: 'white'
+        }, { responseType: 'arraybuffer', timeout: 20000 });
         barChartBase64 = 'data:image/png;base64,' + Buffer.from(barRes.data).toString('base64');
+        console.log(`[generateReport] Bar chart generated OK`);
       }
 
       if (pieData.length > 0) {
@@ -139,44 +156,59 @@ exports.generateReport = functions
             },
             options: { plugins: { legend: { position: 'right' } } }
           },
-          width: 380, height: 280, format: 'png', backgroundColor: 'white'
-        }, { responseType: 'arraybuffer', timeout: 15000 });
+          width: 360, height: 270, format: 'png', backgroundColor: 'white'
+        }, { responseType: 'arraybuffer', timeout: 20000 });
         pieChartBase64 = 'data:image/png;base64,' + Buffer.from(pieRes.data).toString('base64');
+        console.log(`[generateReport] Pie chart generated OK`);
       }
     } catch (chartErr) {
-      console.warn("Chart generation failed, continuing without charts:", chartErr.message);
+      console.warn("[generateReport] Chart generation failed, continuing without charts:", chartErr.message);
     }
 
-    // 6. Generate PDF with pdfmake
+    // 6. Build pdfmake document definition
     const formatRupiah = (num) => `Rp ${(num || 0).toLocaleString('id-ID')}`;
 
-    const fonts = {
-      Courier: { normal: 'Courier', bold: 'Courier-Bold', italics: 'Courier-Oblique', bolditalics: 'Courier-BoldOblique' },
-      Helvetica: { normal: 'Helvetica', bold: 'Helvetica-Bold', italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique' },
-      Times: { normal: 'Times-Roman', bold: 'Times-Bold', italics: 'Times-Italic', bolditalics: 'Times-BoldItalic' }
-    };
-
-    const printer = new PdfPrinter(fonts);
-
     const chartColumns = [];
-    if (pieChartBase64) chartColumns.push({ image: pieChartBase64, width: 210 });
+    if (pieChartBase64) chartColumns.push({ image: pieChartBase64, width: 200 });
     else chartColumns.push({ text: '' });
-    if (barChartBase64) chartColumns.push({ image: barChartBase64, width: 265 });
+    if (barChartBase64) chartColumns.push({ image: barChartBase64, width: 260 });
     else chartColumns.push({ text: '' });
+
+    const txTableBody = [
+      [
+        { text: 'Waktu', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
+        { text: 'Pelanggan', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
+        { text: 'No. Transaksi', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
+        { text: 'Kategori', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 },
+        { text: 'Total', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 8 }
+      ],
+      ...filteredTxs.map((tx, idx) => {
+        const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
+        const bg = idx % 2 === 1 ? '#f8fafc' : null;
+        const timeStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        return [
+          { text: timeStr, fontSize: 8, fillColor: bg },
+          { text: tx.customerName || '-', fontSize: 8, fillColor: bg },
+          { text: tx.transactionNumber || '-', fontSize: 8, fillColor: bg },
+          { text: tx.isPb ? 'Photobooth' : 'Studio', fontSize: 8, fillColor: bg },
+          { text: formatRupiah(tx.total || 0), fontSize: 8, bold: true, fillColor: bg }
+        ];
+      })
+    ];
 
     const docDefinition = {
-      defaultStyle: { font: 'Helvetica', fontSize: 10 },
+      defaultStyle: { font: 'Roboto', fontSize: 10 },
       pageSize: 'A4',
       pageMargins: [40, 40, 40, 40],
       content: [
-        { text: 'Laporan Rekapitulasi Snapme', fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
-        { text: `Periode: ${periodeLabel || '-'} | Kategori: ${filterTab}`, alignment: 'center', color: '#475569', fontSize: 10, margin: [0, 0, 0, 4] },
-        { text: `Dicetak: ${new Date().toLocaleString('id-ID')}`, alignment: 'center', color: '#94a3b8', fontSize: 9, margin: [0, 0, 0, 16] },
+        { text: 'Laporan Rekapitulasi Snapme', fontSize: 18, bold: true, alignment: 'center', margin: [0,0,0,4] },
+        { text: `Periode: ${periodeLabel || '-'} | Kategori: ${filterTab}`, alignment: 'center', color: '#475569', fontSize: 10, margin: [0,0,0,4] },
+        { text: `Dicetak: ${new Date().toLocaleString('id-ID')}`, alignment: 'center', color: '#94a3b8', fontSize: 9, margin: [0,0,0,16] },
 
-        // KPI Table
+        // KPI Boxes
         {
           table: {
-            widths: ['*', '*', '*', '*'],
+            widths: ['*','*','*','*'],
             body: [
               [
                 { text: 'Total Pendapatan', bold: true, fillColor: '#f1f5f9', alignment: 'center', fontSize: 9 },
@@ -185,60 +217,40 @@ exports.generateReport = functions
                 { text: 'Tunai', bold: true, fillColor: '#f1f5f9', alignment: 'center', fontSize: 9 }
               ],
               [
-                { text: formatRupiah(totalNominal), alignment: 'center', margin: [0, 6, 0, 6], bold: true, color: '#10b981' },
-                { text: transactionCount.toString(), alignment: 'center', margin: [0, 6, 0, 6], bold: true },
-                { text: formatRupiah(totalTransfer), alignment: 'center', margin: [0, 6, 0, 6] },
-                { text: formatRupiah(totalTunai), alignment: 'center', margin: [0, 6, 0, 6] }
+                { text: formatRupiah(totalNominal), alignment: 'center', margin: [0,6,0,6], bold: true, color: '#10b981', fontSize: 11 },
+                { text: `${transactionCount}`, alignment: 'center', margin: [0,6,0,6], bold: true, fontSize: 11 },
+                { text: formatRupiah(totalTransfer), alignment: 'center', margin: [0,6,0,6] },
+                { text: formatRupiah(totalTunai), alignment: 'center', margin: [0,6,0,6] }
               ]
             ]
           },
           layout: 'lightHorizontalLines',
-          margin: [0, 0, 0, 20]
+          margin: [0,0,0,20]
         },
 
-        // Charts
-        ...(chartColumns.some(c => c.image) ? [{
+        // Charts (if available)
+        ...(barChartBase64 || pieChartBase64 ? [{
           columns: chartColumns,
           columnGap: 10,
-          margin: [0, 0, 0, 24]
+          margin: [0,0,0,24]
         }] : []),
 
         // Transaction Table
-        { text: 'Rincian Transaksi', fontSize: 13, bold: true, margin: [0, 0, 0, 10] },
+        { text: 'Rincian Transaksi', fontSize: 13, bold: true, margin: [0,0,0,10] },
         {
           table: {
             headerRows: 1,
             widths: [55, '*', 80, 55, 70],
-            body: [
-              [
-                { text: 'Waktu', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 9 },
-                { text: 'Pelanggan', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 9 },
-                { text: 'No. Transaksi', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 9 },
-                { text: 'Kategori', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 9 },
-                { text: 'Total', bold: true, fillColor: '#0f172a', color: '#fff', fontSize: 9 }
-              ],
-              ...filteredTxs.map((tx, idx) => {
-                const d = tx.createdAt ? tx.createdAt.toDate() : new Date();
-                const bg = idx % 2 === 1 ? '#f8fafc' : null;
-                return [
-                  { text: `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`, fontSize: 8, fillColor: bg },
-                  { text: tx.customerName || '-', fontSize: 8, fillColor: bg },
-                  { text: tx.transactionNumber || '-', fontSize: 8, fillColor: bg },
-                  { text: tx.isPb ? 'Photobooth' : 'Studio', fontSize: 8, fillColor: bg },
-                  { text: formatRupiah(tx.total || 0), fontSize: 8, bold: true, fillColor: bg }
-                ];
-              })
-            ]
+            body: txTableBody
           },
           layout: 'lightHorizontalLines'
         }
       ]
     };
 
-    // 7. Generate PDF as Buffer, return as base64
+    console.log(`[generateReport] Generating PDF with ${filteredTxs.length} rows...`);
     const pdfDoc = printer.createPdfKitDocument(docDefinition);
     const chunks = [];
-
     const pdfBase64 = await new Promise((resolve, reject) => {
       pdfDoc.on('data', chunk => chunks.push(chunk));
       pdfDoc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
@@ -246,6 +258,7 @@ exports.generateReport = functions
       pdfDoc.end();
     });
 
+    console.log(`[generateReport] PDF generated successfully, size=${Math.round(pdfBase64.length / 1024)}KB`);
     return {
       success: true,
       pdfBase64,
@@ -253,7 +266,7 @@ exports.generateReport = functions
     };
 
   } catch (error) {
-    console.error("Error in generateReport:", error);
+    console.error("[generateReport] FATAL ERROR:", error.message, error.stack);
     throw new functions.https.HttpsError('internal', error.message);
   }
 });
