@@ -504,24 +504,41 @@ export default function Transaksi({ user, orgId, userMeta }) {
     const scrollPos = window.scrollY;
     window.scrollTo(0, 0); // Gulir ke atas agar elemen absolute berada tepat di tangkapan layar
     
-    // Beri jeda agar React merender div pdf-report-content dengan display: block
+    // Beri jeda 1.5 detik agar React dan Recharts selesai merender grafik
     setTimeout(async () => {
+      let clone = null;
       try {
         const html2pdfModule = await import('html2pdf.js');
         const html2pdf = html2pdfModule.default || html2pdfModule;
 
-        const element = document.getElementById('pdf-report-content');
-        if (!element) return;
+        const originalElement = document.getElementById('pdf-report-content');
+        if (!originalElement) return;
+
+        // Clone element untuk memisahkan dari batasan CSS parent (seperti transform/overflow)
+        clone = originalElement.cloneNode(true);
+        clone.id = 'pdf-report-clone';
+        clone.style.display = 'block';
+        clone.style.position = 'absolute';
+        clone.style.top = '0px';
+        clone.style.left = '0px';
+        clone.style.width = '794px';
+        clone.style.background = 'white';
+        clone.style.zIndex = '999999';
+        clone.style.padding = '40px';
+        clone.style.boxSizing = 'border-box';
+        clone.style.opacity = '1';
+        
+        document.body.appendChild(clone);
         
         const opt = {
           margin: 0,
           filename: `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
           image: { type: 'jpeg', quality: 1.0 },
-          html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+          html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 794 },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+        const pdfBlob = await html2pdf().set(opt).from(clone).output('blob');
         const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
         
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -546,9 +563,12 @@ export default function Transaksi({ user, orgId, userMeta }) {
         alert("Gagal membagikan laporan. Silakan coba lagi.");
       } finally {
         setIsGeneratingPdf(false);
+        if (clone && clone.parentNode) {
+          clone.parentNode.removeChild(clone);
+        }
         window.scrollTo(0, scrollPos); // Kembalikan scroll
       }
-    }, 800); // 800ms jeda rendering
+    }, 1500); // 1.5 detik jeda rendering grafik
   };
 
   return (
@@ -997,21 +1017,23 @@ export default function Transaksi({ user, orgId, userMeta }) {
         className={isGeneratingPdf ? "pdf-mode" : "print-only"} 
         style={{ 
           display: isGeneratingPdf ? 'block' : 'none',
-          position: isGeneratingPdf ? 'absolute' : 'static',
+          position: 'absolute',
           top: 0,
           left: 0,
-          width: isGeneratingPdf ? '794px' : 'auto',
+          width: '794px',
           background: 'white',
-          padding: isGeneratingPdf ? '40px' : 0,
+          padding: '40px',
           boxSizing: 'border-box',
-          zIndex: 9999 // Tampilkan overlay putih saat proses agar koordinatnya presisi
+          opacity: 0.01, // Buat transparan agar dirender Recharts tapi tidak menutupi layar
+          pointerEvents: 'none',
+          zIndex: -9999
         }}
       >
         <style>{`
           /* CSS khusus saat mode PDF aktif (html2pdf berjalan di luar media print) */
           .pdf-mode { font-family: Arial, sans-serif; color: #000; }
-          .pdf-mode .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-          .pdf-mode .print-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #f8fafc; }
+          .pdf-mode .print-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
+          .pdf-mode .print-card { flex: 1 1 calc(50% - 10px); border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #f8fafc; box-sizing: border-box; }
           .pdf-mode .print-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #475569; text-transform: uppercase; }
           .pdf-mode .print-card .stat { font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 4px; }
           .pdf-mode .print-card .sub-stat { font-size: 12px; color: #64748b; }
