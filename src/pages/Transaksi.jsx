@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import html2pdf from 'html2pdf.js';
 
 export default function Transaksi({ user, orgId, userMeta }) {
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'custom', 'all'
@@ -14,6 +15,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
   const [expandedId, setExpandedId] = useState(null);
   const [kasirSettings, setKasirSettings] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const dateInputRef = useRef(null);
 
   // Data Katalog untuk kategorisasi rekap
@@ -498,6 +500,52 @@ export default function Transaksi({ user, orgId, userMeta }) {
     return '';
   };
 
+  const handleShareReport = async () => {
+    setIsGeneratingPdf(true);
+    
+    // Beri jeda agar React merender div pdf-report-content dengan display: block
+    setTimeout(async () => {
+      try {
+        const element = document.getElementById('pdf-report-content');
+        if (!element) return;
+        
+        const opt = {
+          margin: 0,
+          filename: `Laporan_Snapme_${getPeriodeLabel().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+        const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Laporan Snapme',
+            text: 'Berikut adalah laporan transaksi periode ' + getPeriodeLabel()
+          });
+        } else {
+          // Fallback untuk peramban desktop yang tidak mendukung share file
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = opt.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      } catch (err) {
+        console.error("Gagal membuat/membagikan PDF:", err);
+        alert("Gagal membagikan laporan. Silakan coba lagi.");
+      } finally {
+        setIsGeneratingPdf(false);
+      }
+    }, 500);
+  };
+
   return (
     <>
       <div className="page-enter no-print" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
@@ -510,13 +558,14 @@ export default function Transaksi({ user, orgId, userMeta }) {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
-              onClick={() => window.print()}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer', transition: 'opacity 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.opacity = 0.8}
-              onMouseOut={e => e.currentTarget.style.opacity = 1}
+              onClick={handleShareReport}
+              disabled={isGeneratingPdf}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: isGeneratingPdf ? 'not-allowed' : 'pointer', transition: 'opacity 0.2s', opacity: isGeneratingPdf ? 0.7 : 1 }}
+              onMouseOver={e => !isGeneratingPdf && (e.currentTarget.style.opacity = 0.8)}
+              onMouseOut={e => !isGeneratingPdf && (e.currentTarget.style.opacity = 1)}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-              Cetak Laporan
+              {isGeneratingPdf ? 'Memproses...' : 'Cetak & Bagikan'}
             </button>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '4px 8px', borderRadius: 6, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent' }}>
               <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} style={{ accentColor: '#ef4444', width: 14, height: 14, margin: 0, cursor: 'pointer' }} />
@@ -938,11 +987,26 @@ export default function Transaksi({ user, orgId, userMeta }) {
     </div>
 
       {/* ----------------- HIDDEN PRINT LAYOUT (PDF EXPORT) ----------------- */}
-      <div className="print-only" style={{ display: 'none' }}>
+      <div 
+        id="pdf-report-content"
+        className={isGeneratingPdf ? "" : "print-only"} 
+        style={{ 
+          display: isGeneratingPdf ? 'block' : 'none',
+          position: isGeneratingPdf ? 'absolute' : 'static',
+          top: 0,
+          left: isGeneratingPdf ? -9999 : 'auto',
+          width: isGeneratingPdf ? '794px' : 'auto',
+          background: 'white',
+          padding: isGeneratingPdf ? '40px' : 0,
+          boxSizing: 'border-box',
+          zIndex: -1000
+        }}
+      >
         <style>{`
           @media print {
             body { background: white !important; margin: 0; padding: 0; }
             .no-print { display: none !important; }
+            .print-only { display: block !important; position: static !important; left: auto !important; width: auto !important; padding: 0 !important; }
             
             /* Hide the global layout elements */
             .sidebar, .mobile-header { display: none !important; }
