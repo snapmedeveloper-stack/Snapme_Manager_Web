@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import Flatpickr from "react-flatpickr";
+import "flatpickr/dist/themes/light.css";
 
 export default function Transaksi({ user, orgId, userMeta }) {
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'custom', 'all'
-  const [customDate, setCustomDate] = useState('');
+  const [customDate, setCustomDate] = useState([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, tx: null });
   const [transactions, setTransactions] = useState([]);
@@ -38,11 +40,11 @@ export default function Transaksi({ user, orgId, userMeta }) {
       start.setHours(0, 0, 0, 0);
     } else if (filter === 'month') {
       start = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (filter === 'custom' && customDate) {
-      start = new Date(customDate);
+    } else if (filter === 'custom' && customDate && customDate.length === 2) {
+      start = new Date(customDate[0]);
       start.setHours(0, 0, 0, 0);
-      end = new Date(start);
-      end.setDate(end.getDate() + 1);
+      end = new Date(customDate[1]);
+      end.setHours(23, 59, 59, 999);
     }
     return { startDate: start, endDate: end };
   }, [filter, customDate]);
@@ -437,7 +439,14 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
   const getPeriodeLabel = () => {
     if (filter === 'all') return 'Semua Waktu';
-    if (filter === 'custom') return customDate;
+    if (filter === 'custom') {
+      if (customDate && customDate.length === 2) {
+         const startStr = customDate[0].toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+         const endStr = customDate[1].toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+         return `${startStr} - ${endStr}`;
+      }
+      return 'Tanggal Spesifik';
+    }
     if (filter === 'today' && startDate) {
       return 'Hari Ini (' + startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ')';
     }
@@ -480,11 +489,16 @@ export default function Transaksi({ user, orgId, userMeta }) {
         <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, whiteSpace: 'nowrap' }}>
           {filter === 'custom' ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input
-                ref={dateInputRef}
-                type="date"
+              <Flatpickr
                 value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
+                onChange={dates => setCustomDate(dates)}
+                options={{
+                  mode: "range",
+                  dateFormat: "d M Y",
+                  maxDate: "today",
+                  showMonths: 2
+                }}
+                placeholder="Pilih rentang tanggal..."
                 style={{
                   padding: '5px 12px',
                   borderRadius: 8,
@@ -494,7 +508,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
                   fontSize: 12,
                   fontWeight: 600,
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  width: '220px'
                 }}
               />
               <button 
