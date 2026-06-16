@@ -454,23 +454,26 @@ export default function Transaksi({ user, orgId, userMeta }) {
             <option value="custom">Pilih Tanggal...</option>
           </select>
           
-          <div style={{ display: 'inline-flex', background: 'var(--bg-base)', borderRadius: 8, padding: 4, border: '1px solid var(--border-subtle)' }}>
-            {['Semua', 'Studio', 'Photobooth'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setFilterTab(tab)}
-                style={{
-                  background: filterTab === tab ? 'var(--bg-surface)' : 'transparent',
-                  color: filterTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
-                  border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  boxShadow: filterTab === tab ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <select
+            value={filterTab}
+            onChange={(e) => setFilterTab(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-base)',
+              color: 'var(--text-primary)',
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: 'pointer',
+              outline: 'none',
+              appearance: 'auto'
+            }}
+          >
+            <option value="Semua">Kategori: Semua</option>
+            <option value="Studio">Kategori: Studio</option>
+            <option value="Photobooth">Kategori: Photobooth</option>
+          </select>
 
           {filter === 'custom' && (
             <input
