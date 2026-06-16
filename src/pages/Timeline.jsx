@@ -884,10 +884,6 @@ const Timeline = ({ orgId }) => {
             className={`arrived-bar-btn${hasArrived ? ' arrived-bar-btn-active' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
-              if (!hasArrived && !booking.driveLink) {
-                showBookingToast('delete', 'Folder Drive belum dibuat! Buat link drive terlebih dahulu.');
-                return;
-              }
               handleToggleArrived(booking);
             }}
             title={hasArrived ? 'Klik untuk batalkan kedatangan' : 'Tandai Customer Datang'}
