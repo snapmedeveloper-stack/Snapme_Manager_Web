@@ -1140,7 +1140,7 @@ const Timeline = ({ orgId, user }) => {
 
               {/* Photobooth divider row */}
               {photobooths.length > 0 && (
-                <div className="timeline-track-row" style={{ height: 33, background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', pointerEvents: 'none' }}></div>
+                <div className="timeline-track-divider" style={{ height: 33, background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', pointerEvents: 'none' }}></div>
               )}
 
               {/* Photobooth Tracks */}
