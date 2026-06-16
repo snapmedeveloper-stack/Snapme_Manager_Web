@@ -879,6 +879,20 @@ export default function Transaksi({ user, orgId, userMeta }) {
           @media print {
             body { background: white !important; margin: 0; padding: 0; }
             .no-print { display: none !important; }
+            
+            /* Hide the global layout elements */
+            .sidebar, .mobile-header { display: none !important; }
+            
+            /* Reset layout constraints so the print content fills the page */
+            .app-container, .layout-body, .main-content {
+              display: block !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              overflow: visible !important;
+            }
+
             .print-only { 
               display: block !important; 
               width: 100%; 
