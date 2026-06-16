@@ -432,36 +432,57 @@ export default function Transaksi({ user, orgId, userMeta }) {
         </div>
 
         <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, whiteSpace: 'nowrap' }}>
-          <select
-            value={filter}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFilter(val);
-              if (val === 'custom') {
-                if (dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
-                  try { dateInputRef.current.showPicker(); } catch (err) {}
-                }
-              }
-            }}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-base)',
-              color: 'var(--text-primary)',
-              fontWeight: 600,
-              fontSize: 12,
-              cursor: 'pointer',
-              outline: 'none',
-              appearance: 'auto'
-            }}
-          >
-            <option value="today">Hari Ini</option>
-            <option value="week">Minggu Ini</option>
-            <option value="month">Bulan Ini</option>
-            <option value="all">Semua</option>
-            <option value="custom">Pilih Tanggal...</option>
-          </select>
+          {filter === 'custom' ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-base)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+              <button 
+                onClick={() => setFilter('today')} 
+                title="Tutup Kalender"
+                style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+          ) : (
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-base)',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: 12,
+                cursor: 'pointer',
+                outline: 'none',
+                appearance: 'auto'
+              }}
+            >
+              <option value="today">Hari Ini</option>
+              <option value="week">Minggu Ini</option>
+              <option value="month">Bulan Ini</option>
+              <option value="all">Semua</option>
+              <option value="custom">Pilih Tanggal...</option>
+            </select>
+          )}
           
           <select
             value={filterTab}
@@ -484,24 +505,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
             <option value="Photobooth">Kategori: Photobooth</option>
           </select>
 
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={customDate}
-            onChange={(e) => setCustomDate(e.target.value)}
-            style={{
-              display: filter === 'custom' ? 'block' : 'none',
-              padding: '4px 8px',
-              borderRadius: 6,
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-              fontSize: 12,
-              fontWeight: 600,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
+
         </div>
       </div>
 
