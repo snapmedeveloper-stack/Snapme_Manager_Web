@@ -418,86 +418,85 @@ export default function Transaksi({ user, orgId, userMeta }) {
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
       {/* Header & Filter */}
-      <div style={{ padding: '16px 24px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-        <div className="page-header" style={{ marginBottom: 0, paddingBottom: 16 }}>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', margin: 0, color: 'var(--text-primary)' }}>
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            Transaksi & Progress
+      <div style={{ padding: '12px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12, zIndex: 10 }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', margin: 0, color: 'var(--text-primary)' }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Transaksi
           </h1>
-          <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>Pantau status pesanan dan rekap pendapatan harian</p>
-        </div>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '6px 12px', borderRadius: 8, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent', transition: 'all 0.2s' }}>
-            <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} style={{ accentColor: '#ef4444', width: 16, height: 16, cursor: 'pointer' }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: showDeleted ? '#ef4444' : 'var(--text-secondary)', fontWeight: 600, background: showDeleted ? 'rgba(239, 68, 68, 0.1)' : 'transparent', padding: '4px 8px', borderRadius: 6, border: showDeleted ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid transparent' }}>
+            <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} style={{ accentColor: '#ef4444', width: 14, height: 14, margin: 0, cursor: 'pointer' }} />
             Sampah
           </label>
-          <div style={{ display: 'flex', gap: 8, background: 'var(--bg-base)', padding: 6, borderRadius: 12, border: '1px solid var(--border-subtle)', alignItems: 'center', flexWrap: 'wrap' }}>
+        </div>
+
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'inline-flex', gap: 4, background: 'var(--bg-base)', padding: 4, borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
             {[
-            { id: 'today', label: 'Hari Ini' },
-            { id: 'week', label: 'Minggu Ini' },
-            { id: 'month', label: 'Bulan Ini' },
-            { id: 'custom', label: 'Pilih Tanggal' },
-            { id: 'all', label: 'Semua' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: filter === f.id ? 'var(--accent-primary)' : 'transparent',
-                color: filter === f.id ? '#fff' : 'var(--text-secondary)',
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-            {filter === 'custom' && (
-              <input
-                type="date"
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
+              { id: 'today', label: 'Hari Ini' },
+              { id: 'week', label: 'Minggu Ini' },
+              { id: 'month', label: 'Bulan Ini' },
+              { id: 'custom', label: 'Pilih Tanggal' },
+              { id: 'all', label: 'Semua' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
                 style={{
                   padding: '6px 12px',
                   borderRadius: 6,
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-surface)',
-                  color: 'var(--text-primary)',
-                  fontSize: 13,
+                  border: 'none',
+                  background: filter === f.id ? 'var(--accent-primary)' : 'transparent',
+                  color: filter === f.id ? '#fff' : 'var(--text-secondary)',
                   fontWeight: 600,
-                  outline: 'none',
-                  cursor: 'pointer'
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
                 }}
-              />
-            )}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
-        </div>
-      </div>
+          
+          <div style={{ display: 'inline-flex', background: 'var(--bg-base)', borderRadius: 8, padding: 4, border: '1px solid var(--border-subtle)' }}>
+            {['Semua', 'Studio', 'Photobooth'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setFilterTab(tab)}
+                style={{
+                  background: filterTab === tab ? 'var(--bg-surface)' : 'transparent',
+                  color: filterTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
+                  border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  boxShadow: filterTab === tab ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-      {/* --- FILTER TAB --- */}
-      <div style={{ padding: '16px 24px', background: 'var(--bg-base)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-           <div style={{ display: 'inline-flex', background: 'var(--bg-surface)', borderRadius: 8, padding: 4, border: '1px solid var(--border-subtle)' }}>
-             {['Semua', 'Studio', 'Photobooth'].map(tab => (
-               <button
-                 key={tab}
-                 onClick={() => setFilterTab(tab)}
-                 style={{
-                   background: filterTab === tab ? 'var(--bg-base)' : 'transparent',
-                   color: filterTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
-                   border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 700,
-                   cursor: 'pointer', transition: 'all 0.2s',
-                   boxShadow: filterTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                 }}
-               >
-                 {tab}
-               </button>
-             ))}
-           </div>
+          {filter === 'custom' && (
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => setCustomDate(e.target.value)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                fontSize: 12,
+                fontWeight: 600,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Content Area */}
