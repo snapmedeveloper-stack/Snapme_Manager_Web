@@ -507,6 +507,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
     // Beri jeda 1.5 detik agar React dan Recharts selesai merender grafik
     setTimeout(async () => {
       let clone = null;
+      let wrapper = null;
       try {
         const html2canvasModule = await import('html2canvas');
         const html2canvas = html2canvasModule.default || html2canvasModule;
@@ -517,31 +518,46 @@ export default function Transaksi({ user, orgId, userMeta }) {
         const originalElement = document.getElementById('pdf-report-content');
         if (!originalElement) return;
 
-        // Clone element untuk memisahkan dari batasan CSS parent (seperti transform/overflow)
+        const originalHtmlOverflow = document.documentElement.style.overflow;
+        const originalHtmlHeight = document.documentElement.style.height;
+        const originalBodyOverflow = document.body.style.overflow;
+        const originalBodyHeight = document.body.style.height;
+
+        document.documentElement.style.overflow = 'visible';
+        document.documentElement.style.height = 'auto';
+        document.body.style.overflow = 'visible';
+        document.body.style.height = 'auto';
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.top = '0px';
+        wrapper.style.left = '0px';
+        wrapper.style.width = '794px';
+        wrapper.style.zIndex = '999999';
+        wrapper.style.background = 'white';
+
+        // Clone element untuk memisahkan dari batasan CSS parent
         clone = originalElement.cloneNode(true);
         clone.id = 'pdf-report-clone';
         clone.style.display = 'block';
-        clone.style.position = 'absolute'; // WAJIB absolute agar html2canvas merender keseluruhan panjang (bukan hanya seukuran viewport)
-        clone.style.top = '0px';
-        clone.style.left = '0px';
-        clone.style.width = '794px';
+        clone.style.position = 'relative'; // relative inside wrapper
+        clone.style.width = '100%';
         clone.style.background = 'white';
-        clone.style.zIndex = '999999';
         clone.style.padding = '40px';
         clone.style.boxSizing = 'border-box';
         clone.style.opacity = '1';
         
-        document.body.appendChild(clone);
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
 
-        // Tunggu sedikit agar gambar/font ter-render
+        // Tunggu sedikit agar browser mengkalkulasi layout baru tanpa batasan viewport
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Ukur tinggi total elemen untuk mencegah pemotongan (clipping)
-        const totalHeight = clone.scrollHeight;
+        const totalHeight = wrapper.scrollHeight;
 
         // Render Canvas
-        const canvas = await html2canvas(clone, {
-          scale: 2, // Kualitas tinggi
+        const canvas = await html2canvas(wrapper, {
+          scale: 2, 
           useCORS: true,
           width: 794,
           height: totalHeight,
@@ -626,9 +642,13 @@ export default function Transaksi({ user, orgId, userMeta }) {
         alert("Gagal membagikan laporan. Silakan coba lagi.");
       } finally {
         setIsGeneratingPdf(false);
-        if (clone && clone.parentNode) {
-          clone.parentNode.removeChild(clone);
+        if (wrapper && wrapper.parentNode) {
+          wrapper.parentNode.removeChild(wrapper);
         }
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.height = originalHtmlHeight;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.height = originalBodyHeight;
         window.scrollTo(0, scrollPos); // Kembalikan scroll
       }
     }, 1500); // 1.5 detik jeda rendering grafik
