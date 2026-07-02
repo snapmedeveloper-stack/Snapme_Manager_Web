@@ -532,11 +532,34 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
         const filename = result.filename || 'Laporan_Snapme.pdf';
         const file = new File([blob], filename, { type: 'application/pdf' });
+
+        const triggerDownload = () => {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        };
+
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'Laporan Snapme', text: `Laporan periode ${getPeriodeLabel()}` });
+          try {
+            await navigator.share({ files: [file], title: 'Laporan Snapme', text: `Laporan periode ${getPeriodeLabel()}` });
+          } catch (shareErr) {
+            // Jika ditolak browser karena durasi request ke server terlalu lama (user gesture timeout)
+            if (shareErr.name === 'NotAllowedError') {
+              console.warn('Share API ditolak (timeout), beralih ke download manual:', shareErr);
+              triggerDownload();
+            } else {
+              console.log('Share dibatalkan atau error lain:', shareErr);
+            }
+          }
         } else {
-          window.open(url, '_blank');
+          triggerDownload();
         }
+        
+        // Membersihkan memory
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
       } else {
         throw new Error('Tidak ada data PDF dari server.');
       }
