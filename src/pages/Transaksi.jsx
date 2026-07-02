@@ -332,7 +332,6 @@ export default function Transaksi({ user, orgId, userMeta }) {
     }
   };
 
-  // Hitung Rekap & Chart Data
   const { summary, chartData, pieData, studioSummary, pbSummary } = useMemo(() => {
     let totalBokingan = 0;
     let totalNominal = 0;
@@ -348,6 +347,23 @@ export default function Transaksi({ user, orgId, userMeta }) {
     let pbSummary = { revenue: 0, count: 0, aov: 0 };
 
     const dataMap = new Map();
+    const hourlyMap = new Map();
+
+    const isCustomOneDay = filter === 'custom' && customStartDate && customEndDate && customStartDate === customEndDate;
+    const isHourly = filter === 'today' || filter === 'yesterday' || filter === 'day_before' || isCustomOneDay;
+
+    // Pre-populate 10:00 to 22:00 for hourly charts
+    if (isHourly) {
+      for (let i = 10; i <= 22; i++) {
+        const h = `${i.toString().padStart(2, '0')}:00`;
+        dataMap.set(h, { name: h, Total: 0, Bokingan: 0, Transaksi: 0, sortKey: h });
+      }
+    } else {
+      for (let i = 10; i <= 22; i++) {
+        const h = `${i.toString().padStart(2, '0')}:00`;
+        hourlyMap.set(h, { name: h, Transaksi: 0, sortKey: i });
+      }
+    }
 
     transactions.forEach(tx => {
       if (tx.isDeleted) return; // ABAIKAN TRANSAKSI YANG DIHAPUS
@@ -419,12 +435,11 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
       if (!dataMap.has(label)) {
         let sortKey = 0;
-        if (filter === 'today' || filter === 'yesterday' || filter === 'day_before' || isCustomOneDay) sortKey = label;
+        if (isHourly) sortKey = label;
         else if (filter === 'week' || filter === 'last_week') {
            const dayOrder = { 'Senin':1, 'Selasa':2, 'Rabu':3, 'Kamis':4, 'Jumat':5, 'Sabtu':6, 'Minggu':7 };
            sortKey = dayOrder[label];
         } else if (filter === 'month' || filter === 'last_month' || isCustomMultiDay) {
-           // Create a clean timestamp for the start of the day to ensure consistent sorting
            sortKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
         } else {
            sortKey = d.getFullYear() * 100 + d.getMonth();
@@ -435,6 +450,15 @@ export default function Transaksi({ user, orgId, userMeta }) {
       mapItem.Total += txTotal;
       mapItem.Transaksi += 1;
       if (tx.bookingId) mapItem.Bokingan += 1;
+
+      // Akumulasi Jam Sibuk jika filter > 1 hari
+      if (!isHourly) {
+         const hLabel = `${d.getHours().toString().padStart(2, '0')}:00`;
+         if (!hourlyMap.has(hLabel)) {
+           hourlyMap.set(hLabel, { name: hLabel, Transaksi: 0, sortKey: d.getHours() });
+         }
+         hourlyMap.get(hLabel).Transaksi += 1;
+      }
     });
 
     // Sorting chart data
@@ -443,6 +467,9 @@ export default function Transaksi({ user, orgId, userMeta }) {
        if (typeof a.sortKey === 'string') return a.sortKey.localeCompare(b.sortKey);
        return a.sortKey - b.sortKey;
     });
+
+    let sortedHourlyData = Array.from(hourlyMap.values());
+    sortedHourlyData.sort((a, b) => a.sortKey - b.sortKey);
 
     const pieData = [
       { name: 'Paket', value: totalPaket },
@@ -458,6 +485,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
     return { 
       summary: { totalBokingan, totalNominal, totalPaket, totalTambahan, totalCetak, totalCustom, totalTunai, totalTransfer, transactionCount, aov },
       chartData: sortedChartData,
+      hourlyChartData: sortedHourlyData,
+      isHourly,
       pieData,
       studioSummary,
       pbSummary
@@ -1111,6 +1140,23 @@ export default function Transaksi({ user, orgId, userMeta }) {
             <div className="stat">{formatRupiah(summary.totalTunai)}</div>
           </div>
         </div>
+
+        {!summary.isHourly && summary.hourlyChartData && summary.hourlyChartData.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: 16, color: 'var(--text-primary)', marginBottom: 16 }}>Akumulasi Jam Sibuk</h3>
+            <div className="card" style={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summary.hourlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }} />
+                  <Bar dataKey="Transaksi" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         <div style={{ marginBottom: 30, pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: 16, color: '#0f172a', marginBottom: 16, borderBottom: '1px solid #cbd5e1', paddingBottom: 8 }}>
