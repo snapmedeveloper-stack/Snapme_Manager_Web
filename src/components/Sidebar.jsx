@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Receipt, LogOut, User, X } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Receipt, Briefcase, LogOut, User, X } from 'lucide-react';
 
 const Sidebar = ({ user, onLogout, isOpen, onClose }) => {
   return (
@@ -42,6 +42,15 @@ const Sidebar = ({ user, onLogout, isOpen, onClose }) => {
           >
             <Receipt size={20} />
             <span>Transaksi</span>
+          </NavLink>
+          
+          <NavLink 
+            to="/layanan" 
+            className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+            onClick={onClose}
+          >
+            <Briefcase size={20} />
+            <span>Layanan</span>
           </NavLink>
         </nav>
 

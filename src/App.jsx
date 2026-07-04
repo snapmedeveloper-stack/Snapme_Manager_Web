@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Timeline from './pages/Timeline';
 import Transaksi from './pages/Transaksi';
+import Layanan from './pages/Layanan';
 import './index.css';
 
 function Login() {
@@ -45,6 +46,7 @@ function Login() {
 function App() {
   const [user, setUser] = useState(null);
   const [orgId, setOrgId] = useState(null);
+  const [userMeta, setUserMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -62,6 +64,7 @@ function App() {
           const snap = await getDoc(doc(db, 'users', currentUser.uid));
           if (snap.exists()) {
             const data = snap.data();
+            setUserMeta(data);
             oid = data.orgId || data.defaultOrgId || (data.ownedOrgIds?.[0]);
           }
 
@@ -140,6 +143,7 @@ function App() {
           <Route path="/" element={<Dashboard orgId={orgId} />} />
           <Route path="/timeline" element={<Timeline orgId={orgId} user={user} />} />
           <Route path="/transaksi" element={<Transaksi orgId={orgId} user={user} />} />
+          <Route path="/layanan" element={<Layanan orgId={orgId} user={user} userMeta={userMeta} />} />
         </Routes>
       </Layout>
     </Router>
