@@ -447,7 +447,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
     <>
       <div className="page-enter" style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         
-        <div style={{ padding: '48px 60px 24px', flexShrink: 0 }}>
+        <div className="layanan-header">
           <h2 style={{ fontSize: 26, fontFamily: 'Outfit', fontWeight: 700, marginBottom: 8, letterSpacing: -0.5 }}>Layanan & Produk</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Kelola daftar ruangan, paket layanan fotografi, dan item tambahan yang ditawarkan kepada customer.</p>
         </div>
@@ -457,20 +457,14 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
             Akses Terbatas: Hanya Manager / Owner.
           </div>
         ) : (
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div className="layanan-container">
             
             {/* SIDEBAR / LEFT PANEL */}
-            <div style={{ width: 280, borderRight: '1px solid var(--border-subtle)', padding: '0 24px 0 60px', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+            <div className="layanan-sidebar">
               
               <button 
                 onClick={() => setActiveTab('ruangan')}
-                style={{ 
-                  display: 'flex', alignItems: 'center', padding: '12px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: activeTab === 'ruangan' ? 'var(--accent-primary)' : 'transparent',
-                  color: activeTab === 'ruangan' ? '#fff' : 'var(--text-secondary)',
-                  fontWeight: activeTab === 'ruangan' ? 700 : 500,
-                  fontSize: 14, textAlign: 'left', transition: 'all 0.2s'
-                }}
+                className={`layanan-sidebar-btn ${activeTab === 'ruangan' ? 'active' : ''}`}
               >
                 <span style={{ marginRight: 12, fontSize: 18 }}>🚪</span>
                 Daftar Ruangan
@@ -478,13 +472,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
 
               <button 
                 onClick={() => setActiveTab('photobooth')}
-                style={{ 
-                  display: 'flex', alignItems: 'center', padding: '12px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: activeTab === 'photobooth' ? 'var(--accent-primary)' : 'transparent',
-                  color: activeTab === 'photobooth' ? '#fff' : 'var(--text-secondary)',
-                  fontWeight: activeTab === 'photobooth' ? 700 : 500,
-                  fontSize: 14, textAlign: 'left', transition: 'all 0.2s'
-                }}
+                className={`layanan-sidebar-btn ${activeTab === 'photobooth' ? 'active' : ''}`}
               >
                 <span style={{ marginRight: 12, fontSize: 18 }}>📸</span>
                 Daftar Photobooth
@@ -492,13 +480,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
 
               <button 
                 onClick={() => setActiveTab('paket')}
-                style={{ 
-                  display: 'flex', alignItems: 'center', padding: '12px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: activeTab === 'paket' ? 'var(--accent-primary)' : 'transparent',
-                  color: activeTab === 'paket' ? '#fff' : 'var(--text-secondary)',
-                  fontWeight: activeTab === 'paket' ? 700 : 500,
-                  fontSize: 14, textAlign: 'left', transition: 'all 0.2s'
-                }}
+                className={`layanan-sidebar-btn ${activeTab === 'paket' ? 'active' : ''}`}
               >
                 <span style={{ marginRight: 12, fontSize: 18 }}>📸</span>
                 Daftar Paket Layanan
@@ -506,13 +488,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
 
               <button 
                 onClick={() => setActiveTab('addon')}
-                style={{ 
-                  display: 'flex', alignItems: 'center', padding: '12px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: activeTab === 'addon' ? 'var(--accent-primary)' : 'transparent',
-                  color: activeTab === 'addon' ? '#fff' : 'var(--text-secondary)',
-                  fontWeight: activeTab === 'addon' ? 700 : 500,
-                  fontSize: 14, textAlign: 'left', transition: 'all 0.2s'
-                }}
+                className={`layanan-sidebar-btn ${activeTab === 'addon' ? 'active' : ''}`}
               >
                 <span style={{ marginRight: 12, fontSize: 18 }}>🛍️</span>
                 Daftar Item Tambahan
@@ -521,10 +497,10 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
             </div>
 
             {/* CENTER PANEL */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 60px 48px 32px' }}>
+            <div className="layanan-content">
               
               {activeTab === 'ruangan' && (
-                <div className="fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 32, boxShadow: '0 10px 30px rgba(0,0,0,0.15)', maxWidth: 800 }}>
+                <div className="fade-in layanan-card">
                   <h4 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Daftar Ruangan</h4>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.4 }}>Kelola ruangan fisik Anda yang akan digunakan sebagai lapis penjadwalan.</p>
                   
@@ -589,7 +565,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
               )}
 
               {activeTab === 'photobooth' && (
-                <div className="fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 32, boxShadow: '0 10px 30px rgba(0,0,0,0.15)', maxWidth: 800 }}>
+                <div className="fade-in layanan-card">
                   <h4 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Daftar Photobooth</h4>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.4 }}>Kelola photobooth Anda yang akan digunakan sebagai lapis penjadwalan mandiri.</p>
                   
@@ -629,7 +605,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
               )}
 
               {activeTab === 'paket' && (
-                <div className="fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 32, boxShadow: '0 10px 30px rgba(0,0,0,0.15)', maxWidth: 800 }}>
+                <div className="fade-in layanan-card">
                   <h4 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Daftar Paket Layanan</h4>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.4 }}>Bentuk dan mapping paket layanan fototgrafi sesuai dengan letak studio.</p>
 
@@ -669,7 +645,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                           <label style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 500 }}>Warna Paket Layanan</label>
                           <div style={{ 
                             display: 'grid', 
-                            gridTemplateColumns: 'repeat(10, 1fr)', 
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(24px, 1fr))',
                             gap: '6px',
                             background: 'var(--bg-card)',
                             padding: '12px',
@@ -804,7 +780,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
               )}
 
               {activeTab === 'addon' && (
-                <div className="fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 32, boxShadow: '0 10px 30px rgba(0,0,0,0.15)', maxWidth: 800 }}>
+                <div className="fade-in layanan-card">
                   <h4 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Daftar Item Tambahan</h4>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.4 }}>Kelola produk tambahan opsional untuk customer (mis: Extra Print, Soft Copy).</p>
 
