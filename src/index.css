@@ -89,7 +89,7 @@ a {
   height: 100%;
   overflow: hidden;
   margin-left: var(--sidebar-width);
-  transition: transform var(--transition-normal), margin-left var(--transition-normal);
+  transition: margin-left var(--transition-normal);
 }
 
 .main-content {
@@ -1240,35 +1240,39 @@ a {
   overflow-y: auto;
 }
 
-.layanan-sidebar-btn {
+.layanan-topbar-btn {
   display: flex;
   align-items: center;
-  padding: 14px 20px;
-  margin-bottom: 4px;
-  border-radius: 12px;
-  border: none;
+  padding: 12px 24px;
+  border-radius: 30px;
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
-  background: transparent;
+  background: var(--bg-card);
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14.5px;
   text-align: left;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-  gap: 12px;
+  gap: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
 }
 
-.layanan-sidebar-btn:hover:not(.active) {
+.layanan-topbar-btn:hover:not(.active) {
   background: var(--bg-hover);
   color: var(--text-primary);
-  transform: translateX(4px);
+  border-color: var(--border-active);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
-.layanan-sidebar-btn.active {
+.layanan-topbar-btn.active {
   background: linear-gradient(135deg, var(--accent-primary) 0%, var(--primary-color) 100%);
   color: #fff;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  border-color: transparent;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+  transform: translateY(-2px);
 }
 
 .layanan-content {
@@ -1314,13 +1318,12 @@ a {
     gap: 12px;
   }
   
-  .layanan-sidebar-btn {
-    padding: 10px 16px;
-    margin-bottom: 0;
-    border-radius: 24px; /* pill shape on mobile */
+  .layanan-topbar-btn {
+    padding: 10px 18px;
+    font-size: 13px;
   }
 
-  .layanan-sidebar-btn:hover:not(.active) {
+  .layanan-topbar-btn:hover:not(.active) {
     transform: none;
   }
   
@@ -1403,13 +1406,20 @@ a {
   border-radius: 12px;
   border: 1px solid var(--border-color);
   margin-bottom: 8px;
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .layanan-list-item:hover {
   border-color: var(--border-active);
   box-shadow: 0 4px 8px rgba(0,0,0,0.04);
+}
+
+.layanan-list-item.dragging {
+  border-color: var(--primary-color);
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.15);
+  background: #ffffff;
+  z-index: 50;
 }
 
 .layanan-action-btn {
