@@ -1243,23 +1243,32 @@ a {
 .layanan-sidebar-btn {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 4px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
   background: transparent;
   color: var(--text-secondary);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 14.5px;
   text-align: left;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  gap: 12px;
+}
+
+.layanan-sidebar-btn:hover:not(.active) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  transform: translateX(4px);
 }
 
 .layanan-sidebar-btn.active {
-  background: var(--accent-primary);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--primary-color) 100%);
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
 }
 
 .layanan-content {
@@ -1269,12 +1278,15 @@ a {
 }
 
 .layanan-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  padding: 36px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
   max-width: 800px;
+  margin-bottom: 24px;
 }
 
 .layanan-header {
@@ -1299,6 +1311,17 @@ a {
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
+    gap: 12px;
+  }
+  
+  .layanan-sidebar-btn {
+    padding: 10px 16px;
+    margin-bottom: 0;
+    border-radius: 24px; /* pill shape on mobile */
+  }
+
+  .layanan-sidebar-btn:hover:not(.active) {
+    transform: none;
   }
   
   .layanan-sidebar::-webkit-scrollbar {
@@ -1310,11 +1333,111 @@ a {
   }
 
   .layanan-content {
-    padding: 20px 20px 48px;
+    padding: 20px;
   }
 
   .layanan-card {
-    padding: 20px;
+    padding: 24px;
+    border-radius: 16px;
   }
 }
+
+/* Premium Inputs & Buttons for Layanan */
+.layanan-input {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  outline: none;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.layanan-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1), inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.layanan-btn-primary {
+  padding: 0 24px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--primary-color) 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layanan-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.layanan-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.layanan-btn-primary:disabled {
+  background: var(--bg-active);
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.layanan-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface);
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.layanan-list-item:hover {
+  border-color: var(--border-active);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.04);
+}
+
+.layanan-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layanan-action-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.layanan-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.layanan-action-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { doc, collection, onSnapshot, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
+import { Trash2, ArrowUp, ArrowDown, Camera, Box, Palette, Settings } from 'lucide-react';
 
 const PRESET_COLORS = [
   '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
@@ -509,9 +510,9 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                       <input 
                         type="text" placeholder="Tambah ruangan baru..."
                         value={newStudio} onChange={e => setNewStudio(e.target.value)} 
-                        style={{ flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border-active)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-primary)', outline: 'none', fontSize: 14, transition: ' border 0.2s' }}
+                        className="layanan-input"
                       />
-                      <button type="submit" className="btn btn-primary" style={{ padding: '0 20px', borderRadius: 8, fontSize: 14, fontWeight: 600 }} disabled={!newStudio.trim()}>Simpan</button>
+                      <button type="submit" className="layanan-btn-primary" disabled={!newStudio.trim()}>Simpan</button>
                     </form>
                   )}
 
@@ -519,7 +520,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                     {studios.length === 0 ? (
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Belum ada data ruangan.</div>
                     ) : studios.map((studio, index) => (
-                      <div key={studio.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+                      <div key={studio.id} className="layanan-list-item">
                         <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{studio.name}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           {/* Timer Toggle */}
@@ -550,11 +551,11 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                           {userMeta?.role !== 'owner' && (
                             <>
                               <div style={{ display: 'flex', gap: 4 }}>
-                                <button onClick={() => handleMoveStudio(index, -1)} disabled={index === 0} style={{ background: 'transparent', border: 'none', opacity: index === 0 ? 0.3 : 1, cursor: index === 0 ? 'default' : 'pointer', fontSize: 14 }} title="Naikkan urutan">⬆️</button>
-                                <button onClick={() => handleMoveStudio(index, 1)} disabled={index === studios.length - 1} style={{ background: 'transparent', border: 'none', opacity: index === studios.length - 1 ? 0.3 : 1, cursor: index === studios.length - 1 ? 'default' : 'pointer', fontSize: 14 }} title="Turunkan urutan">⬇️</button>
+                                <button onClick={() => handleMoveStudio(index, -1)} disabled={index === 0} className="layanan-action-btn" style={{ opacity: index === 0 ? 0.3 : 1,  cursor: index === 0 ? 'default' : 'pointer',  }} title="Naikkan urutan"><ArrowUp size={16} /></button>
+                                <button onClick={() => handleMoveStudio(index, 1)} disabled={index === studios.length - 1} className="layanan-action-btn" style={{ opacity: index === studios.length - 1 ? 0.3 : 1,  cursor: index === studios.length - 1 ? 'default' : 'pointer',  }} title="Turunkan urutan"><ArrowDown size={16} /></button>
                               </div>
                               <div style={{ width: 1, height: 20, background: 'var(--border-subtle)' }} />
-                              <button onClick={() => handleDeleteStudio(studio.id, studio.name)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Hapus</button>
+                              <button onClick={() => handleDeleteStudio(studio.id, studio.name)} className="layanan-action-btn danger" title="Hapus"><Trash2 size={16} /></button>
                             </>
                           )}
                         </div>
@@ -574,9 +575,9 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                       <input 
                         type="text" placeholder="Tambah photobooth baru..."
                         value={newPhotobooth} onChange={e => setNewPhotobooth(e.target.value)} 
-                        style={{ flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border-active)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-primary)', outline: 'none', fontSize: 14, transition: ' border 0.2s' }}
+                        className="layanan-input"
                       />
-                      <button type="submit" className="btn btn-primary" style={{ padding: '0 20px', borderRadius: 8, fontSize: 14, fontWeight: 600 }} disabled={!newPhotobooth.trim()}>Simpan</button>
+                      <button type="submit" className="layanan-btn-primary" disabled={!newPhotobooth.trim()}>Simpan</button>
                     </form>
                   )}
 
@@ -584,17 +585,17 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                     {photobooths.length === 0 ? (
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Belum ada data photobooth.</div>
                     ) : photobooths.map((pb, index) => (
-                      <div key={pb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+                      <div key={pb.id} className="layanan-list-item">
                         <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{pb.name}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           {userMeta?.role !== 'owner' && (
                             <>
                               <div style={{ display: 'flex', gap: 4 }}>
-                                <button onClick={() => handleMovePhotobooth(index, -1)} disabled={index === 0} style={{ background: 'transparent', border: 'none', opacity: index === 0 ? 0.3 : 1, cursor: index === 0 ? 'default' : 'pointer', fontSize: 14 }} title="Naikkan urutan">⬆️</button>
-                                <button onClick={() => handleMovePhotobooth(index, 1)} disabled={index === photobooths.length - 1} style={{ background: 'transparent', border: 'none', opacity: index === photobooths.length - 1 ? 0.3 : 1, cursor: index === photobooths.length - 1 ? 'default' : 'pointer', fontSize: 14 }} title="Turunkan urutan">⬇️</button>
+                                <button onClick={() => handleMovePhotobooth(index, -1)} disabled={index === 0} className="layanan-action-btn" style={{ opacity: index === 0 ? 0.3 : 1,  cursor: index === 0 ? 'default' : 'pointer',  }} title="Naikkan urutan"><ArrowUp size={16} /></button>
+                                <button onClick={() => handleMovePhotobooth(index, 1)} disabled={index === photobooths.length - 1} className="layanan-action-btn" style={{ opacity: index === photobooths.length - 1 ? 0.3 : 1,  cursor: index === photobooths.length - 1 ? 'default' : 'pointer',  }} title="Turunkan urutan"><ArrowDown size={16} /></button>
                               </div>
                               <div style={{ width: 1, height: 20, background: 'var(--border-subtle)' }} />
-                              <button onClick={() => handleDeletePhotobooth(pb.id, pb.name)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Hapus</button>
+                              <button onClick={() => handleDeletePhotobooth(pb.id, pb.name)} className="layanan-action-btn danger" title="Hapus"><Trash2 size={16} /></button>
                             </>
                           )}
                         </div>
@@ -765,12 +766,12 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                         {userMeta?.role !== 'owner' && (
                           <div style={{ display: 'flex', gap: 12, flexShrink: 0, paddingLeft: 12, alignItems: 'center' }}>
                             <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
-                              <button onClick={() => handleMovePackage(index, -1)} disabled={index === 0} style={{ background: 'transparent', border: 'none', opacity: index === 0 ? 0.3 : 1, cursor: index === 0 ? 'default' : 'pointer', fontSize: 14 }} title="Naikkan urutan">⬆️</button>
-                              <button onClick={() => handleMovePackage(index, 1)} disabled={index === packages.length - 1} style={{ background: 'transparent', border: 'none', opacity: index === packages.length - 1 ? 0.3 : 1, cursor: index === packages.length - 1 ? 'default' : 'pointer', fontSize: 14 }} title="Turunkan urutan">⬇️</button>
+                              <button onClick={() => handleMovePackage(index, -1)} disabled={index === 0} className="layanan-action-btn" style={{ opacity: index === 0 ? 0.3 : 1,  cursor: index === 0 ? 'default' : 'pointer',  }} title="Naikkan urutan"><ArrowUp size={16} /></button>
+                              <button onClick={() => handleMovePackage(index, 1)} disabled={index === packages.length - 1} className="layanan-action-btn" style={{ opacity: index === packages.length - 1 ? 0.3 : 1,  cursor: index === packages.length - 1 ? 'default' : 'pointer',  }} title="Turunkan urutan"><ArrowDown size={16} /></button>
                             </div>
                             <div style={{ width: 1, height: 20, background: 'var(--border-subtle)' }} />
                             <button onClick={() => handleEditPackage(pkg)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Edit</button>
-                            <button onClick={() => handleDeletePackage(pkg.id, pkg.name)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Hapus</button>
+                            <button onClick={() => handleDeletePackage(pkg.id, pkg.name)} className="layanan-action-btn danger" title="Hapus"><Trash2 size={16} /></button>
                           </div>
                         )}
                       </div>
@@ -820,7 +821,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                               <input type="file" accept="image/*" onChange={handleImageUploadAddOn} style={{ display: 'none' }} />
                             </label>
                             {newAddOnImage && (
-                              <button type="button" onClick={() => { setNewAddOnImage(''); setNewAddOnImageFile(null); }} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Hapus</button>
+                              <button type="button" onClick={() => { setNewAddOnImage(''); setNewAddOnImageFile(null); }} className="layanan-action-btn danger" title="Hapus"><Trash2 size={16} /></button>
                             )}
                           </div>
                         </div>
@@ -910,7 +911,7 @@ export default function Layanan({ user, orgId, userMeta, studioEnabled = {}, onT
                         {userMeta?.role !== 'owner' && (
                           <div style={{ display: 'flex', gap: 12, flexShrink: 0, paddingLeft: 12 }}>
                             <button onClick={() => handleEditAddOn(ao)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Edit</button>
-                            <button onClick={() => handleDeleteAddOn(ao.id, ao.name)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Hapus</button>
+                            <button onClick={() => handleDeleteAddOn(ao.id, ao.name)} className="layanan-action-btn danger" title="Hapus"><Trash2 size={16} /></button>
                           </div>
                         )}
                       </div>
