@@ -1,0 +1,9 @@
+rules_version = '2';
+// Hanya untuk menyalakan Storage Emulator: storage.test.mjs memuat ../../storage.rules yang asli.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -46,3 +46,19 @@ export async function resolveAccess(user) {
   const studioSnap = email ? await getDoc(doc(db, 'studioAccounts', email)).catch(() => null) : null;
   return { status: studioSnap?.exists() ? 'studio' : 'onboarding' };
 }
+
+const SYNC_CLAIMS_URL = 'https://asia-southeast2-snapme-database.cloudfunctions.net/syncAccessClaims';
+
+/**
+ * Minta Cloud Function menyamakan tanda akses di token login (dipakai storage.rules untuk unggah gambar), lalu ambil
+ * token baru bila tanda berubah (functions/accessClaims.js).
+ */
+export async function refreshAccessClaims(user) {
+  const res = await fetch(SYNC_CLAIMS_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+  });
+  if (!res.ok) throw new Error(`Sinkron tanda akses gagal (HTTP ${res.status})`);
+  const { changed } = await res.json();
+  if (changed) await user.getIdToken(true);
+}

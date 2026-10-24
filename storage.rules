@@ -1,9 +1,39 @@
 rules_version = '2';
+
+// Rules Cloud Storage Snap Me (docs/RENCANA_TANPA_ROLE.md). Rules Storage hanya bisa membaca database Firestore
+// "(default)", sedangkan data Snap Me ada di database bernama "default". Karena itu peran dibaca dari tanda di token
+// login (custom claim) yang diisi Cloud Function functions/accessClaims.js:
+//   snapmeOrg  = id organisasi, snapmeRole = 'owner' (owner utama / akses Manager tambahan) | 'studio' (akun studio)
+// Rules sebelumnya (sampai 2026-10-24): semua akun Google yang login boleh membaca & menulis semua file.
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // Mengizinkan siapa saja yang sudah login ke aplikasi untuk baca & tulis
-      allow read, write: if request.auth != null;
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in ['bakmiekt@gmail.com'];
+    }
+    function hasRole(orgId, role) {
+      return signedIn() && request.auth.token.get('snapmeOrg', '') == orgId
+        && request.auth.token.get('snapmeRole', '') == role;
+    }
+    function isMember(orgId) {
+      return hasRole(orgId, 'owner') || hasRole(orgId, 'studio');
+    }
+    // Unggahan hanya gambar (foto produk, aset & thumbnail template), maksimal 20 MB. Hapus selalu lolos cek ini.
+    function validImage() {
+      return request.resource == null
+        || (request.resource.contentType.matches('image/.*') && request.resource.size < 20 * 1024 * 1024);
+    }
+
+    // Gambar per organisasi: organizations/{orgId}/{add_ons|makanan|minuman|templates}/...
+    match /organizations/{orgId}/{folder}/{path=**} {
+      allow read: if isMember(orgId) || isAdmin();
+      // Foto produk diatur owner (Snapme Manager); template juga dikelola dari halaman Template di Desktop
+      allow write: if validImage()
+        && (hasRole(orgId, 'owner') || isAdmin() || (hasRole(orgId, 'studio') && folder == 'templates'));
     }
   }
 }

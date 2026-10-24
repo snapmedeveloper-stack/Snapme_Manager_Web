@@ -316,3 +316,9 @@ exports.generateReport = functions
     res.status(500).json({ error: error.message });
   }
 });
+
+// Tanda akses di token login untuk storage.rules (lihat accessClaims.js)
+const accessClaims = require('./accessClaims');
+exports.onStudioAccountWrite = accessClaims.onStudioAccountWrite;
+exports.onOrganizationWrite = accessClaims.onOrganizationWrite;
+exports.syncAccessClaims = accessClaims.syncAccessClaims;

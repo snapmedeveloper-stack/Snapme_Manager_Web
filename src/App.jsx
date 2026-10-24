@@ -11,7 +11,7 @@ import { Button, Card, Spinner, useToast } from './components/ui';
 import logo from './assets/logo.png';
 import AppShell from './components/layout/AppShell';
 import OwnerOnboarding from './components/auth/OwnerOnboarding';
-import { resolveAccess } from './components/auth/access';
+import { refreshAccessClaims, resolveAccess } from './components/auth/access';
 
 // Halaman dimuat saat dibuka, supaya kode satu halaman tidak ikut diunduh di awal
 const Timeline = lazy(() => import('./pages/Timeline'));
@@ -74,6 +74,10 @@ function App() {
   const checkAccess = useCallback(async (currentUser) => {
     try {
       const result = await resolveAccess(currentUser);
+      // Tanda akses untuk unggah gambar (Storage) diperbarui di belakang; halaman tidak menunggu
+      if (result.status === 'ok') {
+        refreshAccessClaims(currentUser).catch((e) => console.error('[Akses] Gagal memperbarui tanda akses', e));
+      }
       setAccess(result);
       setOrgId(result.orgId || null);
       setUserMeta(result.userMeta || null);

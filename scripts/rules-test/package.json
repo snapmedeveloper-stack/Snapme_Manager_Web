@@ -1,0 +1,13 @@
+{
+  "name": "snapme-rules-test",
+  "private": true,
+  "type": "module",
+  "description": "Uji firestore.rules, storage.rules, dan tanda akses Cloud Function di Firebase Emulator",
+  "scripts": {
+    "test": "firebase emulators:exec --only auth,firestore,storage --project demo-snapme \"node run.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0"
+  }
+}
