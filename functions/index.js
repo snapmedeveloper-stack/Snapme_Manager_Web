@@ -38,12 +38,14 @@ exports.generateReport = functions
     return;
   }
 
-  // Laporan berisi pendapatan: hanya owner organisasi ini (organizations/{orgId}.ownerId), sama dengan firestore.rules
+  // Laporan berisi pendapatan: hanya owner organisasi ini
   const idToken = (req.get('Authorization') || '').replace(/^Bearer /, '');
   try {
-    const { uid } = await admin.auth().verifyIdToken(idToken);
-    const orgSnap = await db.doc(`organizations/${orgId}`).get();
-    if (!orgSnap.exists || orgSnap.data().ownerId !== uid) {
+    const { uid, email, email_verified: emailVerified } = await admin.auth().verifyIdToken(idToken);
+    const org = (await db.doc(`organizations/${orgId}`).get()).data();
+    // Owner utama, atau email dengan akses Manager tambahan (ownerEmails), sama dengan firestore.rules
+    const isListed = emailVerified && (org?.ownerEmails || []).includes(String(email).toLowerCase());
+    if (!org || (org.ownerId !== uid && !isListed)) {
       res.status(403).json({ error: 'Laporan hanya untuk owner studio ini' });
       return;
     }

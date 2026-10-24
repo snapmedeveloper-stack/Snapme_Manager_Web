@@ -46,3 +46,18 @@
 .profile-receipt-total > span:last-child { text-align: right; }
 .profile-receipt-thanks { margin-top: var(--space-3); font-style: italic; }
 .profile-receipt-note { font-size: var(--fs-xs); color: var(--text-secondary); }
+
+/* ----- Akses Snapme Manager ----- */
+.profile-access-list { display: flex; flex-direction: column; margin-bottom: var(--space-3); list-style: none; }
+.profile-access-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.profile-access-row:last-child { border-bottom: 0; }
+.profile-access-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.profile-access-add { display: flex; align-items: flex-start; gap: var(--space-2); }
+.profile-access-field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }

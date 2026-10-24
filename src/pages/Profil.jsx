@@ -2,6 +2,7 @@ import { LogOut, Store } from 'lucide-react';
 import { Avatar, Badge, Button, Card, Select, useConfirm } from '../components/ui';
 import AppBar from '../components/layout/AppBar';
 import KasirSettings from '../components/profil/KasirSettings';
+import ManagerAccess from '../components/profil/ManagerAccess';
 import AttendanceSettings from '../components/profil/AttendanceSettings';
 import { ROLE_LABEL, ROLE_TONE } from '../constants/roles';
 import './Profil.css';
@@ -13,7 +14,7 @@ import './Profil.css';
 export default function Profil({ user, orgId, userMeta, branches = [], viewManagerId, onViewManagerChange, onLogout }) {
   const confirm = useConfirm();
   const role = userMeta?.role;
-  const canManage = role === 'owner' || role === 'manager';
+  const canManage = role === 'owner';
   const name = userMeta?.name || user.displayName || user.email?.split('@')[0];
 
   const handleLogout = async () => {
@@ -68,6 +69,7 @@ export default function Profil({ user, orgId, userMeta, branches = [], viewManag
           </Card>
         )}
 
+        {canManage && <ManagerAccess orgId={orgId} isPrimaryOwner={!!userMeta?.isPrimaryOwner} />}
         {canManage && <KasirSettings orgId={orgId} />}
         {canManage && <AttendanceSettings orgId={orgId} />}
 

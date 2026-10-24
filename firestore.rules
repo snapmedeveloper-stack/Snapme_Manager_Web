@@ -5,7 +5,8 @@ rules_version = '2';
 // boleh membaca & menulis seluruh database.
 //
 // Peran ditentukan dari data, bukan dari field users.role:
-// - owner  : organizations/{orgId}.ownerId == uid (Snapme Manager)
+// - owner  : organizations/{orgId}.ownerId == uid (owner utama), atau email login ada di ownerEmails (akses Manager
+//            tambahan, hak sama dengan owner kecuali mengubah ownerEmails) — Snapme Manager
 // - studio : studioAccounts/{email login} aktif untuk organisasi itu (Snapme Desktop, dipakai bersama semua staff)
 // - admin  : email developer (Snapme_Developer_Web, DEVELOPER_EMAILS)
 // Desktop dipakai semua staff, jadi akun studio tidak boleh mengubah harga/layanan, pengaturan nota, transaksi lama,
@@ -25,8 +26,13 @@ service cloud.firestore {
     function isAdmin() {
       return verified() && email() in ['bakmiekt@gmail.com'];
     }
+    // Owner organisasi menurut data dokumennya: owner utama, atau email terverifikasi di daftar ownerEmails
+    function ownsOrg(data) {
+      return signedIn() && (data.ownerId == request.auth.uid
+        || (verified() && email() in data.get('ownerEmails', [])));
+    }
     function isOwner(orgId) {
-      return signedIn() && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid;
+      return ownsOrg(get(/databases/$(database)/documents/organizations/$(orgId)).data);
     }
     function studioPath() {
       return /databases/$(database)/documents/studioAccounts/$(email());
@@ -91,14 +97,17 @@ service cloud.firestore {
     }
 
     match /organizations/{orgId} {
-      allow get: if (signedIn() && resource.data.ownerId == request.auth.uid) || isStudio(orgId) || isAdmin();
-      allow list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow get: if ownsOrg(resource.data) || isStudio(orgId) || isAdmin();
+      allow list: if ownsOrg(resource.data) || isAdmin();
       // Organisasi baru hanya bersama penebusan kode owner dalam satu batch
       allow create: if (signedIn() && request.resource.data.ownerId == request.auth.uid
         && getAfter(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.claimedBy == request.auth.uid
         && getAfter(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.orgId == orgId)
         || isAdmin();
-      allow update: if (isOwner(orgId) && request.resource.data.ownerId == resource.data.ownerId)
+      // Daftar akses Manager (ownerEmails) hanya diubah owner utama
+      allow update: if (isOwner(orgId) && request.resource.data.ownerId == resource.data.ownerId
+          && (request.auth.uid == resource.data.ownerId
+            || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerEmails'])))
         || (isStudio(orgId) && onlyChanges(['wa_status']))
         || isAdmin();
       allow delete: if isAdmin();
