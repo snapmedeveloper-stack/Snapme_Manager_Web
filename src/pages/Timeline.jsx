@@ -56,12 +56,13 @@ function defaultStart(isToday) {
  * Timeline: jadwal booking satu hari. Default tampilan timeline (jalur jam per ruangan); agenda (daftar kartu per
  * ruangan) sebagai opsi (pilihan diingat di perangkat). Aturan jadwal & penyimpanan sama dengan Snapme_Desktop (utils/timeline):
  * bentrok dicek, booking sesudahnya didorong, dan hanya field yang berubah yang ditulis.
- * Owner hanya melihat (sama dengan Desktop).
+ * Sejak rombak tanpa role (Manager hanya untuk owner), owner mengelola jadwal cabang yang sedang dipilih; booking baru
+ * disimpan atas nama cabang itu (managerId), jadi owner yang melihat "semua cabang" harus memilih cabang dulu.
  */
 export default function Timeline({ orgId, user, userMeta, managerId, managerIds }) {
   const toast = useToast();
   const confirm = useConfirm();
-  const canEdit = userMeta?.role !== 'owner';
+  const canEdit = userMeta?.role === 'owner' && !!managerId;
   const [today, setToday] = useState(() => getLocalDateString(new Date()));
   const [selectedDate, setSelectedDate] = useState(today);
   const [view, setView] = useState(readView);
@@ -158,7 +159,7 @@ export default function Timeline({ orgId, user, userMeta, managerId, managerIds 
       date: selectedDate,
       ...clockAt(min),
       duration,
-      managerId: managerId || user.uid,
+      managerId,
     };
     if (!(await save([...bookings, booking], `Booking "${customerName}" ditambahkan.`))) return 'Gagal menyimpan.';
     setAdding(null);
