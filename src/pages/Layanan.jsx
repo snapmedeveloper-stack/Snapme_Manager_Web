@@ -20,12 +20,13 @@ const SECTIONS = [
 
 /**
  * Layanan & Produk: master data yang dipakai Timeline dan Kasir (ruangan, photobooth, paket, item tambahan,
- * makanan, minuman). Sama dengan Snapme_Desktop: manager mengelola; owner hanya melihat (dan boleh menyalakan timer
- * ruangan). Rute ini hanya ada untuk owner & manager (App.jsx).
+ * makanan, minuman). Sejak rombak tanpa role (docs/RENCANA_TANPA_ROLE.md), harga & layanan hanya diubah dari sini:
+ * owner mengelola data cabang yang sedang dipilih. Data baru disimpan
+ * atas nama cabang itu (managerId), jadi owner yang melihat "semua cabang" harus memilih cabang dulu.
  */
-export default function Layanan({ user, orgId, userMeta, managerId, managerIds = null }) {
-  const canEdit = userMeta?.role === 'manager';
-  const ownerId = managerId || user?.uid;
+export default function Layanan({ orgId, userMeta, managerId, managerIds = null }) {
+  const canEdit = userMeta?.role === 'owner' && !!managerId;
+  const ownerId = managerId;
   const [section, setSection] = useState('ruangan');
   const data = useLayananData(orgId, managerIds, true);
   const { studioEnabled, onToggleStudio } = useStudioTimers(orgId);
@@ -54,7 +55,7 @@ export default function Layanan({ user, orgId, userMeta, managerId, managerIds =
             </button>
           ))}
         </div>
-        {!canEdit && <p className="lyn-readonly">Owner hanya bisa melihat. Perubahan dilakukan oleh Manager.</p>}
+        {!canEdit && <p className="lyn-readonly">Pilih cabang di Profil untuk mengubah layanan & harga.</p>}
       </div>
 
       <div className="page-body">

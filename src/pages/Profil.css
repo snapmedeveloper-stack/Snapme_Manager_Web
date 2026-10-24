@@ -2,3 +2,47 @@
 .profile-info { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; }
 .profile-name { font-size: var(--fs-lg); font-weight: var(--fw-semibold); color: var(--text-primary); }
 .profile-email { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.profile-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+
+/* ----- Pratinjau nota (diambil dari Snapme_Desktop Setting.css, .set-receipt-*) ----- */
+.profile-receipt-stage {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+}
+.profile-receipt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 260px;
+  max-width: 100%;
+  padding: var(--space-4) var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* Lebar mengikuti ukuran kertas nota */
+.profile-receipt-58mm { width: 200px; }
+.profile-receipt-a5 { width: 480px; }
+.profile-receipt-logo { max-width: 110px; margin-bottom: var(--space-2); }
+.profile-receipt-line { align-self: stretch; margin: var(--space-2) 0; border-bottom: 1px dashed var(--border-strong); }
+.profile-receipt-item,
+.profile-receipt-total {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-self: stretch;
+  gap: var(--space-2);
+  text-align: left;
+}
+.profile-receipt-total { grid-template-columns: minmax(0, 1fr) auto; font-weight: var(--fw-semibold); }
+.profile-receipt-item > span:not(:first-child),
+.profile-receipt-total > span:last-child { text-align: right; }
+.profile-receipt-thanks { margin-top: var(--space-3); font-style: italic; }
+.profile-receipt-note { font-size: var(--fs-xs); color: var(--text-secondary); }

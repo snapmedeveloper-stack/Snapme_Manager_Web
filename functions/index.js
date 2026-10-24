@@ -38,15 +38,13 @@ exports.generateReport = functions
     return;
   }
 
-  // Hanya akun yang login dan terdaftar di organisasi ini yang boleh mengunduh laporannya
+  // Laporan berisi pendapatan: hanya owner organisasi ini (organizations/{orgId}.ownerId), sama dengan firestore.rules
   const idToken = (req.get('Authorization') || '').replace(/^Bearer /, '');
   try {
     const { uid } = await admin.auth().verifyIdToken(idToken);
-    const userSnap = await db.doc(`users/${uid}`).get();
-    const u = userSnap.exists ? userSnap.data() : {};
-    const userOrgs = [u.orgId, u.defaultOrgId, ...(u.ownedOrgIds || [])];
-    if (!userOrgs.includes(orgId)) {
-      res.status(403).json({ error: 'Akun tidak terdaftar di organisasi ini' });
+    const orgSnap = await db.doc(`organizations/${orgId}`).get();
+    if (!orgSnap.exists || orgSnap.data().ownerId !== uid) {
+      res.status(403).json({ error: 'Laporan hanya untuk owner studio ini' });
       return;
     }
   } catch {

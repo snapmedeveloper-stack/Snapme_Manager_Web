@@ -1,16 +1,19 @@
-import { Eye, LogOut, Settings, SlidersHorizontal } from 'lucide-react';
-import { Avatar, Badge, Button, Card, EmptyState, Select, useConfirm } from '../components/ui';
+import { LogOut, Store } from 'lucide-react';
+import { Avatar, Badge, Button, Card, Select, useConfirm } from '../components/ui';
 import AppBar from '../components/layout/AppBar';
+import KasirSettings from '../components/profil/KasirSettings';
+import AttendanceSettings from '../components/profil/AttendanceSettings';
 import { ROLE_LABEL, ROLE_TONE } from '../constants/roles';
 import './Profil.css';
 
 /**
- * Profil akun yang sedang login, pilihan manager yang dilihat (khusus owner, sama dengan "Lihat Timeline" di menu atas
- * Snapme_Desktop), dan (nanti) pengaturan Snapme Manager.
+ * Profil akun yang sedang login, cabang yang dilihat (khusus owner), dan pengaturan organisasi yang sejak rombak
+ * tanpa role hanya diubah dari Snapme Manager (docs/RENCANA_TANPA_ROLE.md): kasir & nota, absensi.
  */
-export default function Profil({ user, userMeta, managers = [], viewManagerId, onViewManagerChange, onLogout }) {
+export default function Profil({ user, orgId, userMeta, branches = [], viewManagerId, onViewManagerChange, onLogout }) {
   const confirm = useConfirm();
   const role = userMeta?.role;
+  const canManage = role === 'owner' || role === 'manager';
   const name = userMeta?.name || user.displayName || user.email?.split('@')[0];
 
   const handleLogout = async () => {
@@ -38,47 +41,35 @@ export default function Profil({ user, userMeta, managers = [], viewManagerId, o
           </div>
         </Card>
 
-        {role === 'owner' && (
+        {role === 'owner' && branches.length > 1 && (
           <Card
             title={
               <>
-                <Eye size={18} aria-hidden="true" />
-                Data yang dilihat
+                <Store size={18} aria-hidden="true" />
+                Cabang yang dilihat
               </>
             }
           >
             <div className="form-group">
-              <label htmlFor="profile-view-manager">Manager</label>
-              <Select id="profile-view-manager" value={viewManagerId || ''} onChange={onViewManagerChange}>
-                <option value="">Semua manager</option>
-                {managers.map((m) => (
-                  <option key={m.uid} value={m.uid}>
-                    {m.displayName || m.name || m.email || m.uid}
+              <label htmlFor="profile-view-branch">Cabang</label>
+              <Select id="profile-view-branch" value={viewManagerId || ''} onChange={onViewManagerChange}>
+                <option value="">Semua cabang</option>
+                {branches.map((b) => (
+                  <option key={b.managerId} value={b.managerId}>
+                    {b.name}
                   </option>
                 ))}
               </Select>
               <span className="form-hint">
-                Timeline dan Layanan hanya menampilkan data tim manager yang dipilih. Transaksi selalu menampilkan semua,
-                sama dengan Snapme Desktop.
+                Timeline, Layanan, dan Tim hanya menampilkan data cabang yang dipilih. Transaksi selalu menampilkan
+                semua.
               </span>
             </div>
           </Card>
         )}
 
-        <Card
-          title={
-            <>
-              <Settings size={18} aria-hidden="true" />
-              Pengaturan
-            </>
-          }
-        >
-          <EmptyState
-            icon={SlidersHorizontal}
-            title="Belum ada pengaturan"
-            description="Pengaturan Snapme Manager akan ditambahkan di versi berikutnya."
-          />
-        </Card>
+        {canManage && <KasirSettings orgId={orgId} />}
+        {canManage && <AttendanceSettings orgId={orgId} />}
 
         <Button variant="danger" size="lg" block icon={LogOut} onClick={handleLogout}>
           Keluar

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Copy, ExternalLink, MessageCircle, Trash2 } from 'lucide-react';
-import { Badge, Button, Modal, Select, useToast } from '../ui';
+import { Badge, Button, Modal, Select, TimeInput, useToast } from '../ui';
 import { STATUS_TONE } from '../../constants/status';
 import { bookingStage, PHOTOBOOTH_STAGES, STUDIO_STAGES, stageLabel } from '../../utils/bookingStage';
 import { buildBookingTicket, whatsappShareLink } from '../../utils/bookingTicket';
@@ -192,14 +192,10 @@ export default function BookingDetailSheet({
           </div>
           <div className="form-group">
             <label htmlFor="tl-detail-time">Jam mulai</label>
-            <input
+            <TimeInput
               id="tl-detail-time"
-              className="input num"
-              type="time"
-              min="04:00"
-              max="23:59"
               value={timeInputValue(form.startHour, form.startMin)}
-              onChange={(e) => changeTime(e.target.value)}
+              onChange={changeTime}
               disabled={readOnly}
             />
           </div>

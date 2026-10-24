@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Modal, Select } from '../ui';
+import { Button, Modal, Select, TimeInput } from '../ui';
 import { isOfferedAt, timeInputValue } from '../../utils/timeline';
 import AddOnPicker from './AddOnPicker';
 import PlaceSelect from './PlaceSelect';
@@ -99,15 +99,7 @@ export default function AddBookingSheet({ initial, studios, photobooths, package
           </div>
           <div className="form-group">
             <label htmlFor="tl-add-time">Jam mulai</label>
-            <input
-              id="tl-add-time"
-              className="input num"
-              type="time"
-              min="04:00"
-              max="23:59"
-              value={form.time}
-              onChange={(e) => set('time')(e.target.value)}
-            />
+            <TimeInput id="tl-add-time" value={form.time} onChange={set('time')} />
           </div>
         </div>
         <div className="form-group">

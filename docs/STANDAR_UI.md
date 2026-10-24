@@ -63,6 +63,7 @@ Import dari `../components/ui`. API-nya sama dengan Desktop.
 | `Tabs` | Segmented control (`options`, `value`, `onChange`, `ariaLabel`) |
 | `Select` | Dropdown (`onChange(nilai)`) |
 | `Switch` | Saklar on/off |
+| `TimeInput` | Isian jam 24 jam "HH:MM" (`value`, `onChange(nilai)`, keyboard angka di HP). Jangan pakai `<input type="time">`, yang tampil AM/PM bila bahasa HP bukan Indonesia |
 | `SortableList` | Daftar yang urutannya diubah (`items`, `renderItem`, `onReorder`). API sama dengan Desktop, tetapi menyeret memakai pointer event pada pegangan, sehingga jalan di layar sentuh (Desktop memakai HTML5 drag & drop). Panah atas/bawah pada pegangan juga bisa |
 | `ColorPicker` | 8 warna kategori paket (`--cat-*`) |
 | `Modal` | Semua dialog. Di layar ≤640px otomatis jadi **bottom sheet**, dengan tombol footer selebar layar |
@@ -80,7 +81,7 @@ Komponen Desktop yang tidak di-port karena belum dibutuhkan: `SideNav` (di HP di
 
 **Kerangka** (`src/components/layout`, sejak P3):
 
-- `AppShell` menampilkan navbar bawah di HP dan rail samping di layar ≥1024px. Menunya Timeline · Transaksi · Layanan (owner/manager saja) · Profil. Halaman dirender di `.app-content`, yang setinggi sisa layar dan di-scroll sendiri.
+- `AppShell` menampilkan navbar bawah di HP dan rail samping di layar ≥1024px. Menunya Timeline · Transaksi · Layanan · Tim (owner/manager saja) · Profil. Halaman dirender di `.app-content`, yang setinggi sisa layar dan di-scroll sendiri.
 - Halaman yang sudah dirombak dimulai dengan `<AppBar title actions />` (menempel di atas), lalu isinya di `.page-body` (jarak tepi `--page-gutter`, lebar maksimum 720px). Contohnya: `pages/Profil.jsx`.
 - Halaman dimuat per rute (`React.lazy` di `App.jsx`). Library besar yang hanya dipakai satu halaman tidak boleh di-import dari kerangka.
 
@@ -102,6 +103,6 @@ Library baru hanya ditambahkan bila dipakai di lebih dari satu tempat atau mengg
 
 ## 7. CSS
 
-Hanya ada tiga lapis: `styles/tokens.css` (token), `styles/ui.css` (dasar & elemen standar), lalu CSS per halaman/kerangka (`pages/*.css`, `components/layout/layout.css`). Class halaman memakai prefix halamannya (`tl-`/`tlh-` Timeline, `trx-` Transaksi, `lyn-` Layanan, `profile-` Profil).
+Hanya ada tiga lapis: `styles/tokens.css` (token), `styles/ui.css` (dasar & elemen standar), lalu CSS per halaman/kerangka (`pages/*.css`, `components/layout/layout.css`). Class halaman memakai prefix halamannya (`tl-`/`tlh-` Timeline, `trx-` Transaksi, `lyn-` Layanan, `tim-` Tim, `profile-` Profil).
 
 CSS lama (`index.css`, lalu `styles/legacy.css` beserta alias token lama) sudah dihapus seluruhnya di P6 (2026-10-24), setelah semua halaman dirombak.

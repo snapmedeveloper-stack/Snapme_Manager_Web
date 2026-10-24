@@ -1,19 +1,23 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { LogIn, LogOut } from 'lucide-react';
 import { auth, db } from './firebase';
 import { managerTeamIds } from './utils/managerScope';
+import { useStudioAccounts } from './hooks/useStudioAccounts';
 import { canManageStaff } from './constants/roles';
 import { Button, Card, Spinner, useToast } from './components/ui';
 import logo from './assets/logo.png';
 import AppShell from './components/layout/AppShell';
+import OwnerOnboarding from './components/auth/OwnerOnboarding';
+import { resolveAccess } from './components/auth/access';
 
 // Halaman dimuat saat dibuka, supaya kode satu halaman tidak ikut diunduh di awal
 const Timeline = lazy(() => import('./pages/Timeline'));
 const Transaksi = lazy(() => import('./pages/Transaksi'));
 const Layanan = lazy(() => import('./pages/Layanan'));
+const Tim = lazy(() => import('./pages/Tim'));
 const Profil = lazy(() => import('./pages/Profil'));
 
 function Login() {
@@ -64,41 +68,37 @@ function App() {
   const [members, setMembers] = useState([]);
   const [viewManager, setViewManager] = useState(readViewManager);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [access, setAccess] = useState(null); // hasil resolveAccess, atau { status: 'error', message }
+
+  // Owner dikenali dari organisasi miliknya (components/auth/access.js); akun tanpa organisasi diarahkan menebus kode owner
+  const checkAccess = useCallback(async (currentUser) => {
+    try {
+      const result = await resolveAccess(currentUser);
+      setAccess(result);
+      setOrgId(result.orgId || null);
+      setUserMeta(result.userMeta || null);
+    } catch (e) {
+      console.error('[Akses] Gagal memeriksa akun', e);
+      setAccess({ status: 'error', message: e.message });
+      setOrgId(null);
+      setUserMeta(null);
+    }
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true);
-      setErrorMsg('');
       setUser(currentUser);
-
-      if (currentUser) {
-        try {
-          // Organisasi diambil dari data user, sama seperti Snapme_Desktop. Akun yang belum terdaftar tidak diberi akses.
-          const snap = await getDoc(doc(db, 'users', currentUser.uid));
-          const data = snap.exists() ? snap.data() : null;
-          setUserMeta(data);
-          const oid = data?.orgId || data?.defaultOrgId || data?.ownedOrgIds?.[0];
-
-          if (oid) {
-            setOrgId(oid);
-          } else {
-            setOrgId(null);
-            setErrorMsg('Akun Anda belum terdaftar di organisasi mana pun. Daftarkan akun lewat Snapme Desktop atau hubungi Owner.');
-          }
-        } catch (e) {
-          console.error('Error fetching user meta:', e);
-          setErrorMsg('Terjadi kesalahan saat mengambil data: ' + e.message);
-          setOrgId(null);
-        }
-      } else {
+      if (currentUser) await checkAccess(currentUser);
+      else {
+        setAccess(null);
         setOrgId(null);
         setUserMeta(null);
       }
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [checkAccess]);
 
   // Anggota organisasi: daftar manager (pilihan owner) dan operator per manager (lingkup filter data). Bila tidak boleh
   // dibaca, lingkup tetap berisi manager + akun ini sendiri (utils/managerScope).
@@ -111,13 +111,15 @@ function App() {
     );
   }, [orgId]);
 
-  // Sama dengan Snapme_Desktop: manager = dirinya, operator = managernya, owner = manager yang dipilih di Profil
-  // (kosong = semua manager, tanpa filter). Pilihan owner diingat di perangkat ini.
+  // Cabang = akun studio (docs/RENCANA_TANPA_ROLE.md). Manager = cabangnya sendiri, operator = cabang managernya
+  // (keduanya hanya selama masa transisi), owner = cabang yang dipilih di Profil/Tim (kosong = semua cabang; hanya
+  // satu cabang = otomatis cabang itu). Pilihan owner diingat di perangkat ini.
   const role = userMeta?.role;
-  const managers = useMemo(() => (role === 'owner' ? members.filter((m) => m.role === 'manager') : []), [members, role]);
-  // Manager yang tersimpan tapi tidak ada di daftar anggota (sudah keluar, atau daftarnya belum termuat sesaat setelah
-  // login): pakai semua manager
-  const viewManagerId = viewManager && managers.some((m) => m.uid === viewManager) ? viewManager : null;
+  const studio = useStudioAccounts(orgId, members);
+  const { branches } = studio;
+  // Cabang tersimpan yang sudah tidak ada (atau daftarnya belum termuat sesaat setelah login): pakai semua cabang
+  const savedBranch = viewManager && branches.some((b) => b.managerId === viewManager) ? viewManager : null;
+  const viewManagerId = role === 'owner' ? savedBranch || (branches.length === 1 ? branches[0].managerId : null) : null;
   const changeViewManager = (uid) => {
     setViewManager(uid || null);
     try {
@@ -150,13 +152,19 @@ function App() {
     return <Login />;
   }
 
-  if (!orgId) {
+  if (access?.status === 'onboarding') {
+    return <OwnerOnboarding user={user} onComplete={() => checkAccess(user)} onLogout={handleLogout} />;
+  }
+
+  if (access?.status !== 'ok' || !orgId) {
     return (
       <main className="screen-center">
         <Card className="screen-card">
-          <h1 className="page-title">Akses ditolak</h1>
+          <h1 className="page-title">{access?.status === 'studio' ? 'Akun studio' : 'Gagal memeriksa akun'}</h1>
           <p className="page-subtitle">
-            {errorMsg || 'Akun Anda tidak terkait dengan organisasi mana pun. Hubungi Owner.'}
+            {access?.status === 'studio'
+              ? 'Akun ini adalah akun studio untuk Snapme Desktop. Snapme Manager hanya untuk owner; masuk dengan akun Google owner.'
+              : `Periksa koneksi internet lalu muat ulang halaman. (${access?.message || 'tanpa keterangan'})`}
           </p>
           <div className="form-stack">
             <div className="account-box">
@@ -174,6 +182,7 @@ function App() {
   }
 
   const session = { user, orgId, userMeta, managerId, managerIds };
+  const branchProps = { branches, onViewManagerChange: changeViewManager };
   const canManage = canManageStaff(role);
 
   return (
@@ -190,14 +199,14 @@ function App() {
             <Route path="/timeline" element={<Timeline {...session} />} />
             <Route path="/transaksi" element={<Transaksi {...session} />} />
             {canManage && <Route path="/layanan" element={<Layanan {...session} />} />}
+            {canManage && <Route path="/tim" element={<Tim {...session} {...branchProps} studio={studio} />} />}
             <Route
               path="/profil"
               element={
                 <Profil
                   {...session}
-                  managers={managers}
+                  {...branchProps}
                   viewManagerId={viewManagerId}
-                  onViewManagerChange={changeViewManager}
                   onLogout={handleLogout}
                 />
               }

@@ -1,0 +1,203 @@
+rules_version = '2';
+
+// Rules Snapme (Firestore database "default"), tahap 1 rombak tanpa role
+// (Snapme_Desktop/docs/RENCANA_TANPA_ROLE.md §6). Rules sebelumnya (sampai 2026-10-24): semua akun Google yang login
+// boleh membaca & menulis seluruh database.
+//
+// Peran ditentukan dari data, bukan dari field users.role:
+// - owner  : organizations/{orgId}.ownerId == uid (Snapme Manager)
+// - studio : studioAccounts/{email login} aktif untuk organisasi itu (Snapme Desktop, dipakai bersama semua staff)
+// - admin  : email developer (Snapme_Developer_Web, DEVELOPER_EMAILS)
+// Desktop dipakai semua staff, jadi akun studio tidak boleh mengubah harga/layanan, pengaturan nota, transaksi lama,
+// daftar staff, jadwal, atau akun studio, dan hanya membaca transaksi beberapa hari terakhir.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function email() {
+      return request.auth.token.email.lower();
+    }
+    function verified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
+      return verified() && email() in ['bakmiekt@gmail.com'];
+    }
+    function isOwner(orgId) {
+      return signedIn() && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid;
+    }
+    function studioPath() {
+      return /databases/$(database)/documents/studioAccounts/$(email());
+    }
+    function studio() {
+      return get(studioPath()).data;
+    }
+    function isStudio(orgId) {
+      return verified() && exists(studioPath()) && studio().get('active', true) != false && studio().orgId == orgId;
+    }
+    function isMember(orgId) {
+      return isOwner(orgId) || isStudio(orgId);
+    }
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+    // Tanggal kalender 'YYYY-MM-DD' dekat hari ini. Longgar ±3 hari supaya aman lintas zona waktu; batas persis
+    // (hari ini & kemarin) dijaga UI Desktop.
+    function nearToday(d) {
+      return d is string && d.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && timestamp.date(int(d.split('-')[0]), int(d.split('-')[1]), int(d.split('-')[2])) > request.time - duration.value(3, 'd')
+        && timestamp.date(int(d.split('-')[0]), int(d.split('-')[1]), int(d.split('-')[2])) < request.time + duration.value(1, 'd');
+    }
+    function validRecord(r) {
+      return r.staffId is string && r.start is string && r.end is string && nearToday(r.date);
+    }
+
+    // Profil login. Field peran/organisasi lama tidak boleh diubah sendiri.
+    match /users/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
+      allow create: if (signedIn() && request.auth.uid == uid
+        && !request.resource.data.keys().hasAny(['role', 'orgId', 'defaultOrgId', 'ownedOrgIds', 'managedBy']))
+        || isAdmin();
+      allow update: if (signedIn() && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'orgId', 'defaultOrgId', 'ownedOrgIds', 'managedBy']))
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Akun studio: id = email huruf kecil. Owner mengelola akun organisasinya; Desktop membaca akunnya sendiri dan
+    // mengisi uid sekali saat login pertama. Email yang belum terdaftar boleh dicek (dokumen tidak ada).
+    match /studioAccounts/{accountEmail} {
+      allow get: if (signedIn() && (resource == null || accountEmail == email() || isOwner(resource.data.orgId)))
+        || isAdmin();
+      allow list: if isOwner(resource.data.orgId) || isAdmin();
+      allow create: if (isOwner(request.resource.data.orgId) && accountEmail == accountEmail.lower()) || isAdmin();
+      allow update: if (isOwner(resource.data.orgId) && request.resource.data.orgId == resource.data.orgId)
+        || (verified() && accountEmail == email() && resource.data.get('uid', null) == null
+          && onlyChanges(['uid']) && request.resource.data.uid == request.auth.uid)
+        || isAdmin();
+      allow delete: if isOwner(resource.data.orgId) || isAdmin();
+    }
+
+    // Kode undangan owner: dibuat admin, ditebus owner baru di Snapme Manager.
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list, create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.role == 'owner' && resource.data.status != 'claimed'
+          && onlyChanges(['status', 'claimedBy', 'claimedAt', 'orgId'])
+          && request.resource.data.status == 'claimed' && request.resource.data.claimedBy == request.auth.uid);
+    }
+
+    match /organizations/{orgId} {
+      allow get: if (signedIn() && resource.data.ownerId == request.auth.uid) || isStudio(orgId) || isAdmin();
+      allow list: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      // Organisasi baru hanya bersama penebusan kode owner dalam satu batch
+      allow create: if (signedIn() && request.resource.data.ownerId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.claimedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.orgId == orgId)
+        || isAdmin();
+      allow update: if (isOwner(orgId) && request.resource.data.ownerId == resource.data.ownerId)
+        || (isStudio(orgId) && onlyChanges(['wa_status']))
+        || isAdmin();
+      allow delete: if isAdmin();
+
+      // Operasional harian: dibaca & ditulis Desktop dan owner
+      match /bookings/{id} {
+        allow read, write: if isMember(orgId) || isAdmin();
+      }
+      match /chats/{id} {
+        allow read, write: if isMember(orgId) || isAdmin();
+      }
+      match /messages/{id} {
+        allow read, write: if isMember(orgId) || isAdmin();
+      }
+      match /meta/{id} {
+        allow read, write: if isMember(orgId) || isAdmin();
+      }
+      match /templates/{id} {
+        allow read, write: if isMember(orgId) || isAdmin();
+      }
+      // Template pesan WA boleh diubah Desktop; nota & absensi hanya owner
+      match /settings/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && !(id in ['kasir', 'attendance']));
+      }
+
+      // Layanan & harga: hanya owner. Desktop boleh menyalakan timer ruangan dan mengurangi stok saat menjual.
+      match /packages/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /add_ons/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /photobooths/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /kasir/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /studios/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow create, delete: if isOwner(orgId) || isAdmin();
+        allow update: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && onlyChanges(['timerEnabled']));
+      }
+      match /makanan/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow create, delete: if isOwner(orgId) || isAdmin();
+        allow update: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && onlyChanges(['stock']));
+      }
+      match /minuman/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow create, delete: if isOwner(orgId) || isAdmin();
+        allow update: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && onlyChanges(['stock']));
+      }
+
+      // Transaksi: Desktop hanya membuat dan membaca 8 hari terakhir (UI 7 hari; sehari cadangan untuk halaman yang
+      // terbuka melewati tengah malam). Koreksi & rekap hanya owner.
+      match /transactions/{id} {
+        allow read: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && resource.data.createdAt >= request.time - duration.value(8, 'd'));
+        allow create: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && request.resource.data.createdBy == request.auth.uid);
+        allow update, delete: if isOwner(orgId) || isAdmin();
+      }
+
+      // Tim: staff & jadwal diatur owner; Desktop mencatat kerja cabangnya di sekitar hari ini, hapus = deletedAt.
+      match /staff/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /shiftSchedules/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /attendance/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow create: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && validRecord(request.resource.data)
+            && request.resource.data.managerId == studio().managerId
+            && request.resource.data.source == 'desktop' && request.resource.data.deletedAt == null);
+        allow update: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && resource.data.managerId == studio().managerId && nearToday(resource.data.date)
+            && validRecord(request.resource.data) && request.resource.data.managerId == resource.data.managerId
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt', 'createdOn', 'source']));
+        allow delete: if isOwner(orgId) || isAdmin();
+      }
+
+      // Sisa sistem role: dibaca Desktop selama transisi (operator lama masuk lingkup cabang), dihapus di tahap 5.
+      match /members/{id} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin();
+      }
+      match /securityAlerts/{id} {
+        allow read, write: if isOwner(orgId) || isAdmin();
+      }
+    }
+  }
+}

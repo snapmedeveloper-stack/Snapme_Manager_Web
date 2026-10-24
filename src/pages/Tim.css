@@ -1,0 +1,206 @@
+/* Tim — prefix "tim-": jadwal, staff, akun studio. Prefix "abs-": komponen absensi bersama (kalender, rincian hari,
+   form catat kerja, rekap) yang disalin ke Snapme_Desktop (components/absensi, Absensi.css). */
+
+.tim-toolbar {
+  position: sticky;
+  top: calc(var(--appbar-h) + var(--safe-top));
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--page-gutter);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tim-branch { font-size: var(--fs-sm); color: var(--text-secondary); }
+
+/* ----- Tambah staff ----- */
+.tim-add { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-4); }
+.tim-add-field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
+
+/* ----- Daftar (staff, akun studio) ----- */
+.tim-list { display: flex; flex-direction: column; gap: var(--space-2); list-style: none; }
+.tim-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.tim-row.sortable-item:has(> .sortable-handle) { padding-left: 0; }
+.tim-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.tim-row-title {
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tim-row-title.is-muted { color: var(--text-muted); }
+.tim-row-meta {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tim-row-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.tim-switch-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.tim-switch-row > span { display: flex; flex-direction: column; gap: 2px; font-weight: var(--fw-medium); }
+
+/* ----- Kalender kerja ----- */
+.abs-cal { display: flex; flex-direction: column; gap: var(--space-3); }
+.abs-cal-nav { display: flex; align-items: center; justify-content: space-between; }
+.abs-cal-month { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.abs-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.abs-cal-weekday {
+  padding-bottom: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  text-align: center;
+}
+.abs-cal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: var(--space-1) 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.abs-cal-cell.is-out { border-color: transparent; background: transparent; cursor: default; }
+.abs-cal-cell.is-today { border-color: var(--accent-primary); box-shadow: inset 0 0 0 1px var(--accent-primary); }
+.abs-cal-cell.is-selected { background: var(--accent-subtle); }
+.abs-cal-cell:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+@media (hover: hover) {
+  .abs-cal-cell:not(.is-out):hover { background: var(--bg-hover); }
+}
+.abs-cal-date { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.abs-cal-cell.is-today .abs-cal-date { color: var(--accent-primary); }
+.abs-cal-count { font-size: var(--fs-xs); color: var(--text-secondary); }
+.abs-cal-count.is-future { color: var(--text-muted); }
+.abs-cal-cell > .dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; }
+.abs-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.abs-cal-legend > span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.abs-cal-legend-text { color: var(--text-muted); }
+
+/* ----- Rincian tanggal ----- */
+.abs-day-note { margin-bottom: var(--space-3); }
+.abs-day-list { display: flex; flex-direction: column; list-style: none; }
+.abs-day-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.abs-day-row:last-child { border-bottom: 0; }
+.abs-day-main { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.abs-day-name { font-weight: var(--fw-semibold); color: var(--text-primary); }
+.abs-day-meta { font-size: var(--fs-sm); color: var(--text-secondary); }
+.abs-day-record {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-height: var(--control-h-sm);
+  color: var(--text-primary);
+}
+.abs-day-record.is-deleted { color: var(--text-muted); }
+.abs-day-record.is-deleted > .num { text-decoration: line-through; }
+.abs-day-trail { font-size: var(--fs-xs); color: var(--text-muted); }
+.abs-day-actions { display: inline-flex; margin-left: auto; }
+.abs-day-deleted {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border-strong);
+}
+
+/* ----- Form catat kerja ----- */
+.abs-time-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+
+/* ----- Rekap ----- */
+.abs-recap { display: flex; flex-direction: column; list-style: none; }
+.abs-recap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.abs-recap-row:last-child { border-bottom: 0; }
+.abs-recap-main { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.abs-recap-name { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.abs-recap-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.abs-recap-empty { font-size: var(--fs-sm); color: var(--text-muted); }
+.abs-recap-hours { flex: none; font-weight: var(--fw-semibold); color: var(--text-primary); }
+
+/* ----- Jadwal mingguan ----- */
+.tim-sched-when { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.tim-sched { display: flex; flex-direction: column; gap: var(--space-3); }
+.tim-sched-day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.tim-sched-head { display: flex; align-items: center; gap: var(--space-2); }
+.tim-sched-label { font-weight: var(--fw-semibold); color: var(--text-primary); }
+.tim-sched-count { flex: 1; font-size: var(--fs-sm); color: var(--text-muted); }
+/* HP: nama + tombol hapus di baris pertama, jam di baris kedua; layar lebar: satu baris */
+.tim-sched-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'staff remove' 'times times' 'error error';
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+.tim-sched-staff { grid-area: staff; }
+.tim-sched-remove { grid-area: remove; }
+.tim-sched-times { grid-area: times; display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); }
+.tim-sched-times > .input { flex: 1; min-width: 0; }
+.tim-sched-error { grid-area: error; }
+@media (min-width: 640px) {
+  .tim-sched-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+    grid-template-areas: 'staff times remove' 'error error error';
+  }
+}
+.tim-sched-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  background: var(--bg-card);
+}

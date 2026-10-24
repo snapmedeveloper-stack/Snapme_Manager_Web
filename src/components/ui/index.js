@@ -12,5 +12,6 @@ export { default as SortableList } from './SortableList';
 export { default as Spinner } from './Spinner';
 export { default as Switch } from './Switch';
 export { default as Tabs } from './Tabs';
+export { default as TimeInput } from './TimeInput';
 export { default as UIProvider } from './UIProvider';
 export { useConfirm, useToast } from './uiContext';

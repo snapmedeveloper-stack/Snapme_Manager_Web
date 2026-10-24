@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { CalendarDays, Package, Receipt, UserRound } from 'lucide-react';
+import { CalendarDays, Package, Receipt, UserRound, Users } from 'lucide-react';
 import logo from '../../assets/logo.png';
 import './layout.css';
 
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/timeline', label: 'Timeline', icon: CalendarDays },
   { to: '/transaksi', label: 'Transaksi', icon: Receipt },
   { to: '/layanan', label: 'Layanan', icon: Package, staffOnly: true },
+  { to: '/tim', label: 'Tim', icon: Users, staffOnly: true },
   { to: '/profil', label: 'Profil', icon: UserRound },
 ];
 
