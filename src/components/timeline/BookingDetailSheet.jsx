@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Check, ExternalLink, Trash2 } from 'lucide-react';
-import { Badge, Button, Modal, Select } from '../ui';
+import { Check, Copy, ExternalLink, MessageCircle, Trash2 } from 'lucide-react';
+import { Badge, Button, Modal, Select, useToast } from '../ui';
 import { STATUS_TONE } from '../../constants/status';
 import { bookingStage, PHOTOBOOTH_STAGES, STUDIO_STAGES, stageLabel } from '../../utils/bookingStage';
+import { buildBookingTicket, whatsappShareLink } from '../../utils/bookingTicket';
+import { copyText } from '../../utils/clipboard';
 import {
   clampDuration,
   formatTimeRange,
@@ -37,6 +39,7 @@ export default function BookingDetailSheet({
   onDelete,
   onClose,
 }) {
+  const toast = useToast();
   const [form, setForm] = useState(() => Object.fromEntries(EDITABLE.map((key) => [key, original[key]])));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -48,6 +51,18 @@ export default function BookingDetailSheet({
   const stage = bookingStage(live, { isPhotobooth: isPhotoboothId(photobooths, live.studio) });
   const lastStage = (isPhotoboothId(photobooths, live.studio) ? PHOTOBOOTH_STAGES : STUDIO_STAGES).length;
   const duration = clampDuration(form.duration, original.duration);
+  // Tiket dari data tersimpan (live), bukan isian yang belum disimpan: Desktop mencocokkan nama & tanggal persis
+  const hasPhone = !!(live.waNumber || live.customerPhone);
+  const ticket = hasPhone ? '' : buildBookingTicket(live);
+
+  const copyTicket = async () => {
+    try {
+      await copyText(ticket);
+      toast.success('Tiket booking disalin', 'Tempel di chat WhatsApp customer.');
+    } catch (err) {
+      toast.error('Gagal menyalin tiket', err.message);
+    }
+  };
 
   const set = (key) => (value) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -114,6 +129,25 @@ export default function BookingDetailSheet({
           <ExternalLink size={14} aria-hidden="true" />
           Buka folder Google Drive
         </a>
+      )}
+
+      {!hasPhone && (
+        <section className="tl-ticket" aria-label="Tiket booking">
+          <span className="tl-ticket-title">Nomor WhatsApp belum ada</span>
+          <span className="form-hint">
+            Kirim tiket booking ke customer. Bila dikirim dari WhatsApp nomor studio, nomor customer otomatis tertaut ke
+            booking ini.
+          </span>
+          <div className="tl-ticket-actions">
+            <a className="btn btn-primary" href={whatsappShareLink(ticket)} target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={16} aria-hidden="true" />
+              WhatsApp
+            </a>
+            <Button icon={Copy} onClick={copyTicket}>
+              Salin
+            </Button>
+          </div>
+        </section>
       )}
 
       <form id="tl-detail-form" className="form-stack tl-detail-form" onSubmit={submit}>

@@ -275,36 +275,6 @@ export function recapSummary(bookings, isToday) {
   };
 }
 
-const titleCase = (text) =>
-  text
-    ? text
-        .toLowerCase()
-        .split(' ')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ')
-    : '';
-
-/** Teks rekap untuk clipboard: "Rabu, 7 Oktober (Semua)\n1. Andi 09.00 reguler (+ 2x Extra Cetak)". */
-export function buildRecapText(bookings, { tab, date, addOns }) {
-  const dayName = new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
-  const lines = [...bookings]
-    .sort((a, b) => startOf(a) - startOf(b))
-    .map((b, i) => {
-      const start = `${b.startHour.toString().padStart(2, '0')}.${(b.startMin || 0).toString().padStart(2, '0')}`;
-      const pkg = b.package ? b.package.toLowerCase() : '';
-      const extras = Object.entries(b.addOns || {})
-        .filter(([, item]) => item.qty > 0)
-        .map(([id, item]) => {
-          const addOn = addOns.find((ao) => ao.id === id);
-          return addOn ? `${item.qty}x ${addOn.name}` : null;
-        })
-        .filter(Boolean);
-      const extraText = extras.length > 0 ? ` (+ ${extras.join(', ')})` : '';
-      return `${i + 1}. ${titleCase(b.customerName)} ${start} ${pkg}${extraText}`;
-    });
-  return `${dayName} (${tab})\n${lines.join('\n')}`;
-}
-
 // ---------- Simpan ke Firestore ----------
 
 /** Field yang berbeda dari a ke b (untuk updateDoc); field yang tidak ada di b dihapus. */

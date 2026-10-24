@@ -6,7 +6,9 @@ Tujuan: Snapme Manager nyaman dipakai di HP seperti aplikasi, dengan navbar bawa
 
 - Dashboard dihapus.
 - Tema terang saja.
-- Timeline di HP: default tampilan **agenda**, timeline horizontal sebagai opsi.
+- Timeline: default tampilan **timeline** (jalur jam per ruangan), agenda (kartu) sebagai opsi. Semula agenda; diubah pemilik setelah mencoba (24 Oktober 2026).
+- Fitur **Salin rekap** di Timeline dihapus dari Manager (Desktop tetap punya).
+- Detail booking tanpa nomor WA: tombol **WhatsApp** (pilih kontak, tiket terisi) dan **Salin** tiket. Format tiket sama dengan bot `#tiket` Desktop agar nomor tertaut otomatis bila dikirim dari WhatsApp nomor studio.
 - Menu Pengaturan di Profil disediakan dulu dalam keadaan kosong, lalu dikembangkan nanti.
 
 ## Paket

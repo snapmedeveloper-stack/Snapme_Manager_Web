@@ -218,6 +218,21 @@
 .tl-swatch { flex: none; width: 12px; height: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-full); background: var(--item-color); }
 .tl-detail-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .tl-drive-link { margin-top: var(--space-3); }
+
+/* Kirim tiket booking (booking tanpa nomor WA) */
+.tl-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+}
+.tl-ticket-title { font-weight: var(--fw-semibold); color: var(--text-primary); }
+.tl-ticket-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.tl-ticket-actions > .btn { flex: 1; }
 .tl-detail-form { margin-top: var(--space-4); }
 
 .tl-addons { display: grid; gap: var(--space-2); }

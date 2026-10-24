@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, ChartGantt, ClipboardCopy, List, Plus } from 'lucide-react';
+import { CalendarCheck, ChartGantt, List, Plus } from 'lucide-react';
 import { Button, Spinner, useConfirm, useToast } from '../components/ui';
 import AppBar from '../components/layout/AppBar';
 import AgendaView from '../components/timeline/AgendaView';
@@ -16,7 +16,6 @@ import { normalizePhoneNumber } from '../utils/phone';
 import {
   START_HOUR,
   applyDrop,
-  buildRecapText,
   canAddAt,
   clockAt,
   editBookingError,
@@ -35,11 +34,12 @@ import {
 import './Timeline.css';
 
 const VIEW_KEY = 'snapme.timeline.view';
+// Default tampilan timeline (keputusan pemilik 2026-10-24); agenda hanya bila dipilih di perangkat ini
 const readView = () => {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'timeline' ? 'timeline' : 'agenda';
+    return localStorage.getItem(VIEW_KEY) === 'agenda' ? 'agenda' : 'timeline';
   } catch {
-    return 'agenda';
+    return 'timeline';
   }
 };
 const GONE_MESSAGE = 'Booking ini sudah dihapus atau dipindah tanggal di komputer lain.';
@@ -53,8 +53,8 @@ function defaultStart(isToday) {
 }
 
 /**
- * Timeline: jadwal booking satu hari. HP default tampilan agenda (daftar per ruangan); timeline horizontal sebagai
- * opsi (pilihan diingat di perangkat). Aturan jadwal & penyimpanan sama dengan Snapme_Desktop (utils/timeline):
+ * Timeline: jadwal booking satu hari. Default tampilan timeline (jalur jam per ruangan); agenda (daftar kartu per
+ * ruangan) sebagai opsi (pilihan diingat di perangkat). Aturan jadwal & penyimpanan sama dengan Snapme_Desktop (utils/timeline):
  * bentrok dicek, booking sesudahnya didorong, dan hanya field yang berubah yang ditulis.
  * Owner hanya melihat (sama dengan Desktop).
  */
@@ -248,19 +248,6 @@ export default function Timeline({ orgId, user, userMeta, managerId, managerIds 
     save(next, 'Jadwal digeser.');
   };
 
-  const copyRecap = async () => {
-    if (!shown.length) {
-      toast.info('Tidak ada booking untuk disalin.');
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(buildRecapText(shown, { tab, date: selectedDate, addOns }));
-      toast.success(`Rekap ${tab.toLowerCase()} disalin.`);
-    } catch {
-      toast.error('Gagal menyalin rekap', 'Browser tidak mengizinkan akses clipboard.');
-    }
-  };
-
   const viewProps = { bookings: shown, places, packages, isToday, onOpen: (b) => setDetail(b) };
   const sheetCatalog = { studios, photobooths, packages, addOns };
 
@@ -275,7 +262,6 @@ export default function Timeline({ orgId, user, userMeta, managerId, managerIds 
                 Hari ini
               </Button>
             )}
-            <Button variant="ghost" iconOnly icon={ClipboardCopy} aria-label="Salin rekap" onClick={copyRecap} />
             <Button
               variant="ghost"
               iconOnly
