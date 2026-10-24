@@ -131,7 +131,7 @@
 }
 
 /* ----- Timeline horizontal ----- */
-.tlh-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; --tlh-label-w: 92px; --tlh-row-h: 64px; }
+.tlh-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; --tlh-label-w: 92px; --tlh-row-h: 76px; }
 .tlh { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; background: var(--bg-base); }
 .tlh-grid { position: relative; width: max-content; min-width: 100%; padding-bottom: 96px; }
 .tlh-row { display: flex; }
@@ -176,10 +176,8 @@
   bottom: 6px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  padding: 2px 16px 2px 8px;
   overflow: hidden;
+  container-type: inline-size; /* blok sempit menyembunyikan ikon (di bawah) */
   border: 1px solid var(--border-strong);
   border-left: 4px solid var(--item-color);
   border-radius: var(--radius-md);
@@ -192,10 +190,41 @@
   touch-action: pan-x pan-y;
 }
 .tlh-block.is-dragging { z-index: 1; box-shadow: var(--shadow-lg); cursor: grabbing; }
+/* Sudah datang: latar sedikit beraksen (padat, garis "sekarang" tidak tembus); kelewatan waktu: tepi merah. Sama dengan Desktop */
+.tlh-block.is-arrived { background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-card)); }
+.tlh-block.is-overtime { border-top-color: var(--danger); border-right-color: var(--danger); border-bottom-color: var(--danger); }
+.tlh-block-body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 2px 16px 2px 8px; overflow: hidden; }
 .tlh-block-name { display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
-.tlh-block-name > svg { flex: none; color: var(--accent-primary); }
+.tlh-block-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tlh-block-name > svg { flex: none; color: var(--text-secondary); }
 .tlh-block-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); color: var(--text-secondary); }
-.tlh-resize { position: absolute; top: 0; right: 0; bottom: 0; width: 14px; cursor: ew-resize; touch-action: none; }
+
+/* Penanda datang di dasar blok (tampilan sama dengan tombol Datang Desktop; di Manager hanya penanda) */
+.tlh-arrive {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: safe center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 4px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+.tlh-arrive > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tlh-arrive > svg { flex: none; }
+.tlh-arrive.is-arrived { background: var(--accent-subtle); color: var(--accent-primary); }
+.tlh-block.is-overtime .tlh-arrive.is-arrived { background: var(--danger-subtle); color: var(--danger); }
+@container (max-width: 100px) {
+  .tlh-arrive > svg,
+  .tlh-block-name > svg { display: none; }
+}
+
+.tlh-resize { position: absolute; top: 0; right: 0; bottom: 22px; width: 14px; cursor: ew-resize; touch-action: none; }
 .tlh-resize::after { content: ''; position: absolute; top: 30%; bottom: 30%; right: 5px; width: 3px; border-radius: var(--radius-full); background: var(--border-strong); }
 
 .tlh-now {

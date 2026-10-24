@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ZoomIn, ZoomOut } from 'lucide-react';
+import { Check, PackagePlus, UserCheck, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '../ui';
 import {
   HOURS,
@@ -7,6 +7,8 @@ import {
   TOTAL_HOURS,
   clockAt,
   formatTimeRange,
+  isInTimeWindow,
+  isPastEnd,
   packageColor,
   timelineMin,
 } from '../../utils/timeline';
@@ -114,10 +116,15 @@ export default function TimelineView({ bookings, places, packages, isToday, canE
                 data-place={place.id}
                 onClick={(e) => handleTrackClick(e, place.id)}
               >
-                {blocksIn(place.id).map(({ booking, min, duration, isDragged }) => (
+                {blocksIn(place.id).map(({ booking, min, duration, isDragged }) => {
+                  const hasArrived = !!booking.arrivedAt;
+                  // Sama dengan BookingBlock Desktop: merah bila sudah datang dan waktunya sudah lewat (sesi kelewatan)
+                  const isOvertime = hasArrived && isToday && isInTimeWindow(booking) && isPastEnd(booking);
+                  const hasAddOns = Object.values(booking.addOns || {}).some((ao) => ao.qty > 0);
+                  return (
                   <div
                     key={booking.id}
-                    className={`tlh-block${isDragged ? ' is-dragging' : ''}${booking.arrivedAt ? ' is-arrived' : ''}`}
+                    className={`tlh-block${isDragged ? ' is-dragging' : ''}${hasArrived ? ' is-arrived' : ''}${isOvertime ? ' is-overtime' : ''}`}
                     style={{
                       left: min * ppm,
                       width: Math.max(duration * ppm, 24),
@@ -126,12 +133,20 @@ export default function TimelineView({ bookings, places, packages, isToday, canE
                     onMouseDown={(e) => onBlockMouseDown(e, booking)}
                     onTouchStart={(e) => onBlockTouchStart(e, booking)}
                   >
-                    <span className="tlh-block-name">
-                      {booking.arrivedAt && <Check size={12} aria-label="Datang" />}
-                      {booking.customerName || '-'}
+                    <span className="tlh-block-body">
+                      <span className="tlh-block-name">
+                        <span className="tlh-block-name-text">{booking.customerName || '-'}</span>
+                        {hasAddOns && <PackagePlus size={12} aria-label="Ada item tambahan" />}
+                      </span>
+                      <span className="tlh-block-meta">{booking.package || '-'}</span>
+                      <span className="tlh-block-meta num">{formatTimeRange(booking.startHour, booking.startMin, duration)}</span>
                     </span>
-                    <span className="tlh-block-meta num">{formatTimeRange(booking.startHour, booking.startMin, duration)}</span>
-                    <span className="tlh-block-meta">{booking.package}</span>
+                    {/* Penanda status datang (sama dengan tombol Datang di Desktop). Hanya penanda: menandai datang
+                        membuat folder Google Drive lewat aplikasi Desktop, jadi diubah dari PC studio */}
+                    <span className={`tlh-arrive${hasArrived ? ' is-arrived' : ''}`}>
+                      {hasArrived ? <Check size={12} aria-hidden="true" /> : <UserCheck size={12} aria-hidden="true" />}
+                      <span>{hasArrived ? 'Datang' : 'Belum datang'}</span>
+                    </span>
                     {canEdit && (
                       <span
                         className="tlh-resize"
@@ -141,7 +156,8 @@ export default function TimelineView({ bookings, places, packages, isToday, canE
                       />
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

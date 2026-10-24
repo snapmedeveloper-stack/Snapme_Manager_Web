@@ -61,6 +61,19 @@ const nowMins = () => {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
 };
+const endTime = (booking) => {
+  const end = new Date();
+  end.setHours(booking.startHour, (booking.startMin || 0) + (booking.duration || 60), 0, 0);
+  return end.getTime();
+};
+
+/** Garis waktu sekarang menyentuh blok booking (menit mulai sampai menit selesai, inklusif). */
+export function isInTimeWindow(booking) {
+  const now = nowMins();
+  return now >= startOf(booking) && now <= endOf(booking);
+}
+
+export const isPastEnd = (booking) => Date.now() > endTime(booking);
 
 /**
  * Keadaan jadwal booking (kunci STATUS_TONE): hanya untuk hari ini. 'active' = sedang berjalan, 'done' = sudah lewat,
@@ -75,7 +88,7 @@ export function scheduleState(booking, isToday) {
   return 'waiting';
 }
 
-/** "HH:MM" untuk <input type="time"> dari jam & menit booking. */
+/** "HH:MM" untuk isian jam (TimeInput) dari jam & menit booking. */
 export const timeInputValue = (hour, min) => `${String(hour).padStart(2, '0')}:${String(min || 0).padStart(2, '0')}`;
 
 /** Jam & menit dari isian "HH:MM", atau null bila kosong / di luar 04:00–23:59. */
