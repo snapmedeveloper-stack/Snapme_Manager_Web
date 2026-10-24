@@ -59,7 +59,7 @@ function defaultStart(isToday) {
  * Sejak rombak tanpa role (Manager hanya untuk owner), owner mengelola jadwal cabang yang sedang dipilih; booking baru
  * disimpan atas nama cabang itu (managerId), jadi owner yang melihat "semua cabang" harus memilih cabang dulu.
  */
-export default function Timeline({ orgId, user, userMeta, managerId, managerIds }) {
+export default function Timeline({ orgId, userMeta, managerId, managerIds }) {
   const toast = useToast();
   const confirm = useConfirm();
   const canEdit = userMeta?.role === 'owner' && !!managerId;
