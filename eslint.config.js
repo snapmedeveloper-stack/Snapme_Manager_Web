@@ -18,4 +18,12 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  // Cloud Functions: Node.js CommonJS, bukan kode browser
+  {
+    files: ['functions/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+      sourceType: 'commonjs',
+    },
+  },
 ])

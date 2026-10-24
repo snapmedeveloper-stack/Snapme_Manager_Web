@@ -1,0 +1,17 @@
+{
+  "name": "Snapme Manager",
+  "short_name": "Snapme",
+  "description": "Pantau jadwal, transaksi, dan layanan studio Snap Me.",
+  "lang": "id",
+  "start_url": "/timeline",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

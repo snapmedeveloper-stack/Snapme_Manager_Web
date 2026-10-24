@@ -1,52 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, limit, query } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
+import { LogIn, LogOut } from 'lucide-react';
 import { auth, db } from './firebase';
-import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Timeline from './pages/Timeline';
-import Transaksi from './pages/Transaksi';
-import Layanan from './pages/Layanan';
-import './index.css';
+import { managerTeamIds } from './utils/managerScope';
+import { canManageStaff } from './constants/roles';
+import { Button, Card, Spinner, useToast } from './components/ui';
+import logo from './assets/logo.png';
+import AppShell from './components/layout/AppShell';
+
+// Halaman dimuat saat dibuka, supaya kode satu halaman tidak ikut diunduh di awal
+const Timeline = lazy(() => import('./pages/Timeline'));
+const Transaksi = lazy(() => import('./pages/Transaksi'));
+const Layanan = lazy(() => import('./pages/Layanan'));
+const Profil = lazy(() => import('./pages/Profil'));
 
 function Login() {
+  const toast = useToast();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, new GoogleAuthProvider());
     } catch (error) {
-      console.error("Gagal login", error);
-      alert("Gagal login: " + error.message);
+      console.error('Gagal login', error);
+      // Popup ditutup sendiri oleh user bukan kesalahan
+      if (error.code !== 'auth/popup-closed-by-user') toast.error('Gagal login', error.message);
       setIsLoggingIn(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: 'var(--bg-color)' }}>
-      <div className="card" style={{ textAlign: 'center', maxWidth: 400, width: '100%' }}>
-        <h2 style={{ marginBottom: 16 }}>Snapme Manager</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Silakan login untuk memantau data studio.</p>
-        <button 
-          className="btn btn-primary" 
-          style={{ width: '100%', padding: '12px', opacity: isLoggingIn ? 0.7 : 1 }} 
-          onClick={handleLogin}
-          disabled={isLoggingIn}
-        >
-          {isLoggingIn ? 'Memproses...' : 'Login dengan Google'}
-        </button>
-      </div>
-    </div>
+    <main className="screen-center">
+      <Card className="screen-card">
+        <img src={logo} alt="Snap Me" className="screen-logo" />
+        <h1 className="page-title">Snapme Manager</h1>
+        <p className="page-subtitle">Masuk untuk memantau jadwal, transaksi, dan layanan studio.</p>
+        <div className="form-stack">
+          <Button variant="primary" size="lg" block icon={LogIn} loading={isLoggingIn} onClick={handleLogin}>
+            Login dengan Google
+          </Button>
+        </div>
+      </Card>
+    </main>
   );
 }
+
+const VIEW_MANAGER_KEY = 'snapme.owner.viewManager';
+const readViewManager = () => {
+  try {
+    return localStorage.getItem(VIEW_MANAGER_KEY);
+  } catch {
+    return null;
+  }
+};
 
 function App() {
   const [user, setUser] = useState(null);
   const [orgId, setOrgId] = useState(null);
   const [userMeta, setUserMeta] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [viewManager, setViewManager] = useState(readViewManager);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -55,46 +71,65 @@ function App() {
       setLoading(true);
       setErrorMsg('');
       setUser(currentUser);
-      
+
       if (currentUser) {
         try {
-          let oid = null;
-          
-          // 1. Coba ambil dari data user
+          // Organisasi diambil dari data user, sama seperti Snapme_Desktop. Akun yang belum terdaftar tidak diberi akses.
           const snap = await getDoc(doc(db, 'users', currentUser.uid));
-          if (snap.exists()) {
-            const data = snap.data();
-            setUserMeta(data);
-            oid = data.orgId || data.defaultOrgId || (data.ownedOrgIds?.[0]);
-          }
-
-          // 2. Jika tidak ada, coba ambil organisasi pertama dari koleksi (fallback)
-          if (!oid) {
-            const orgsSnap = await getDocs(query(collection(db, 'organizations'), limit(1)));
-            if (!orgsSnap.empty) {
-              oid = orgsSnap.docs[0].id;
-              console.log("Fallback ke organisasi pertama:", oid);
-            }
-          }
+          const data = snap.exists() ? snap.data() : null;
+          setUserMeta(data);
+          const oid = data?.orgId || data?.defaultOrgId || data?.ownedOrgIds?.[0];
 
           if (oid) {
             setOrgId(oid);
           } else {
             setOrgId(null);
-            setErrorMsg('Tidak dapat menemukan data Organisasi di database. Pastikan database tidak kosong.');
+            setErrorMsg('Akun Anda belum terdaftar di organisasi mana pun. Daftarkan akun lewat Snapme Desktop atau hubungi Owner.');
           }
         } catch (e) {
-          console.error("Error fetching user meta:", e);
+          console.error('Error fetching user meta:', e);
           setErrorMsg('Terjadi kesalahan saat mengambil data: ' + e.message);
           setOrgId(null);
         }
       } else {
         setOrgId(null);
+        setUserMeta(null);
       }
       setLoading(false);
     });
     return () => unsub();
   }, []);
+
+  // Anggota organisasi: daftar manager (pilihan owner) dan operator per manager (lingkup filter data). Bila tidak boleh
+  // dibaca, lingkup tetap berisi manager + akun ini sendiri (utils/managerScope).
+  useEffect(() => {
+    if (!orgId) return undefined;
+    return onSnapshot(
+      collection(db, 'organizations', orgId, 'members'),
+      (snap) => setMembers(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+      () => setMembers([]),
+    );
+  }, [orgId]);
+
+  // Sama dengan Snapme_Desktop: manager = dirinya, operator = managernya, owner = manager yang dipilih di Profil
+  // (kosong = semua manager, tanpa filter). Pilihan owner diingat di perangkat ini.
+  const role = userMeta?.role;
+  const managers = useMemo(() => (role === 'owner' ? members.filter((m) => m.role === 'manager') : []), [members, role]);
+  // Manager yang tersimpan tapi tidak ada di daftar anggota (sudah keluar, atau daftarnya belum termuat sesaat setelah
+  // login): pakai semua manager
+  const viewManagerId = viewManager && managers.some((m) => m.uid === viewManager) ? viewManager : null;
+  const changeViewManager = (uid) => {
+    setViewManager(uid || null);
+    try {
+      if (uid) localStorage.setItem(VIEW_MANAGER_KEY, uid);
+      else localStorage.removeItem(VIEW_MANAGER_KEY);
+    } catch {
+      // Penyimpanan diblokir: pilihan hanya berlaku sampai halaman ditutup
+    }
+  };
+  const managerId = role === 'manager' ? user?.uid : role === 'operator' ? userMeta?.managedBy : viewManagerId;
+  const managerIdsKey = (managerTeamIds(managerId, members, role === 'operator' ? user?.uid : null) || []).join(',');
+  const managerIds = useMemo(() => (managerIdsKey ? managerIdsKey.split(',') : null), [managerIdsKey]);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -104,11 +139,10 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ width: 32, height: 32, border: '3px solid #e5e7eb', borderTopColor: '#4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <span style={{ color: '#6b7a99' }}>Memuat data...</span>
-      </div>
+      <main className="screen-center">
+        <Spinner size="lg" />
+        <span>Memuat data...</span>
+      </main>
     );
   }
 
@@ -118,34 +152,60 @@ function App() {
 
   if (!orgId) {
     return (
-      <div style={{ display: 'flex', height: '100vh', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: 'var(--bg-color)' }}>
-        <div className="card" style={{ textAlign: 'center', maxWidth: 450, width: '100%' }}>
-          <h2 style={{ color: 'var(--danger-color)', marginBottom: 16 }}>Akses Ditolak</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-            {errorMsg || 'Akun Anda tidak terkait dengan Organisasi manapun. Hubungi Administrator.'}
+      <main className="screen-center">
+        <Card className="screen-card">
+          <h1 className="page-title">Akses ditolak</h1>
+          <p className="page-subtitle">
+            {errorMsg || 'Akun Anda tidak terkait dengan organisasi mana pun. Hubungi Owner.'}
           </p>
-          <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', marginBottom: '24px', fontSize: '0.85rem', color: '#64748b', textAlign: 'left', wordBreak: 'break-all' }}>
-            Email Anda: <strong>{user.email}</strong><br/>
-            UID: {user.uid}
+          <div className="form-stack">
+            <div className="account-box">
+              Email: <strong>{user.email}</strong>
+              <br />
+              UID: <span className="num">{user.uid}</span>
+            </div>
+            <Button block icon={LogOut} onClick={handleLogout}>
+              Keluar
+            </Button>
           </div>
-          <button className="btn btn-primary" onClick={handleLogout} style={{ width: '100%' }}>
-            Keluar (Logout)
-          </button>
-        </div>
-      </div>
+        </Card>
+      </main>
     );
   }
 
+  const session = { user, orgId, userMeta, managerId, managerIds };
+  const canManage = canManageStaff(role);
+
   return (
     <Router>
-      <Layout user={user} onLogout={handleLogout}>
-        <Routes>
-          <Route path="/" element={<Dashboard orgId={orgId} />} />
-          <Route path="/timeline" element={<Timeline orgId={orgId} user={user} />} />
-          <Route path="/transaksi" element={<Transaksi orgId={orgId} user={user} />} />
-          <Route path="/layanan" element={<Layanan orgId={orgId} user={user} userMeta={userMeta} />} />
-        </Routes>
-      </Layout>
+      <AppShell canManage={canManage}>
+        <Suspense
+          fallback={
+            <div className="page-loading">
+              <Spinner size="lg" />
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/timeline" element={<Timeline {...session} />} />
+            <Route path="/transaksi" element={<Transaksi {...session} />} />
+            {canManage && <Route path="/layanan" element={<Layanan {...session} />} />}
+            <Route
+              path="/profil"
+              element={
+                <Profil
+                  {...session}
+                  managers={managers}
+                  viewManagerId={viewManagerId}
+                  onViewManagerChange={changeViewManager}
+                  onLogout={handleLogout}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/timeline" replace />} />
+          </Routes>
+        </Suspense>
+      </AppShell>
     </Router>
   );
 }

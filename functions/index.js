@@ -38,6 +38,23 @@ exports.generateReport = functions
     return;
   }
 
+  // Hanya akun yang login dan terdaftar di organisasi ini yang boleh mengunduh laporannya
+  const idToken = (req.get('Authorization') || '').replace(/^Bearer /, '');
+  try {
+    const { uid } = await admin.auth().verifyIdToken(idToken);
+    const userSnap = await db.doc(`users/${uid}`).get();
+    const u = userSnap.exists ? userSnap.data() : {};
+    const userOrgs = [u.orgId, u.defaultOrgId, ...(u.ownedOrgIds || [])];
+    if (!userOrgs.includes(orgId)) {
+      res.status(403).json({ error: 'Akun tidak terdaftar di organisasi ini' });
+      return;
+    }
+  } catch {
+    // Token kosong, kedaluwarsa, atau palsu
+    res.status(401).json({ error: 'Silakan login ulang' });
+    return;
+  }
+
   console.log(`[generateReport] START orgId=${orgId} filter=${filterTab}`);
 
   try {

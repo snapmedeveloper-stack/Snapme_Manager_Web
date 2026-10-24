@@ -1,0 +1,139 @@
+/* Kerangka aplikasi (AppShell, AppBar). HP: konten + navbar bawah. Layar lebar (≥1024px): rail samping + konten. */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Wadah halaman: setinggi sisa layar, di-scroll sendiri. Halaman lama mengandalkan tinggi ini (height: 100%). */
+.app-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background: var(--bg-base);
+}
+
+/* ----- Navbar bawah (HP & tablet) ----- */
+.bottom-nav {
+  flex: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  height: calc(var(--bottomnav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  z-index: var(--z-nav);
+}
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  touch-action: manipulation;
+  user-select: none;
+}
+.bottom-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.bottom-nav-item.is-active { color: var(--accent-primary); }
+.bottom-nav-item.is-active .bottom-nav-icon { background: var(--accent-subtle); }
+
+/* ----- Rail samping (layar lebar) ----- */
+.side-rail { display: none; }
+
+@media (min-width: 1024px) {
+  .app-shell { flex-direction: row; }
+  .bottom-nav { display: none; }
+  .side-rail {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 220px;
+    padding: var(--space-5) var(--space-3);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-subtle);
+  }
+  .side-rail-logo { height: 28px; width: auto; align-self: flex-start; margin: 0 var(--space-3) var(--space-5); }
+  .side-rail-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--control-h);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-weight: var(--fw-medium);
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .side-rail-item.is-active { background: var(--accent-subtle); color: var(--accent-primary); }
+}
+@media (min-width: 1024px) and (hover: hover) {
+  .side-rail-item:not(.is-active):hover { background: var(--bg-hover); color: var(--text-primary); }
+}
+
+/* ----- App bar halaman ----- */
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(var(--appbar-h) + var(--safe-top));
+  padding: var(--safe-top) var(--space-2) 0 var(--page-gutter);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.app-bar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+}
+.app-bar-actions { display: flex; align-items: center; gap: var(--space-1); }
+
+/* Isi halaman yang sudah dirombak: jarak tepi standar, lebar baca dibatasi di layar lebar */
+.page-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--page-gutter);
+}
+
+/* Memuat halaman (lazy) */
+.page-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media print {
+  .bottom-nav, .side-rail { display: none !important; }
+  .app-shell, .app-content { height: auto; overflow: visible; }
+}

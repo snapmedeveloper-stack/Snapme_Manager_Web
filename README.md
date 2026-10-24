@@ -1,16 +1,39 @@
-# React + Vite
+# Snapme Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web untuk owner & manager studio Snap Me: memantau dan mengelola **Timeline** (jadwal booking), **Transaksi**, dan **Layanan** (ruangan, paket, produk) dari HP. Bisa dipasang ke layar utama (PWA).
 
-Currently, two official plugins are available:
+Memakai database Firestore yang sama dengan Snapme Desktop (`snapme-database`, database `default`), jadi perubahan di sini langsung terlihat di PC studio, dan sebaliknya.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Menjalankan
 
-## React Compiler
+```bash
+npm install
+npm run dev            # http://localhost:5173
+npm run dev -- --host  # bisa dibuka dari HP di Wi-Fi yang sama
+npm run build          # hasil di dist/
+npm run lint
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Login memakai akun Google yang sudah terdaftar di organisasi lewat Snapme Desktop. **Database-nya produksi**, jadi uji tulis memakai data uji lalu hapus lagi.
 
-## Expanding the ESLint configuration
+## Deploy
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **Web:** Vercel (`vercel.json` mengarahkan semua rute ke `index.html`).
+- **Cloud Function `generateReport`** (laporan PDF Transaksi, `functions/`, Node 20, region `asia-southeast2`): `firebase deploy --only functions`. Function ini mewajibkan token login (header `Authorization: Bearer`). Deploy web lebih dulu bila klien lama belum mengirim token.
+
+## Struktur
+
+| Folder | Isi |
+|---|---|
+| `src/pages/` | Halaman: Timeline, Transaksi, Layanan, Profil (+ CSS masing-masing) |
+| `src/components/layout/` | Kerangka: navbar bawah / rail samping, app bar |
+| `src/components/ui/` | Komponen standar (tombol, modal/bottom sheet, toast, dll.) |
+| `src/components/timeline/`, `transaksi/`, `layanan/` | Bagian per halaman |
+| `src/utils/`, `src/hooks/`, `src/constants/` | Logika bersama. Banyak yang **salinan Snapme_Desktop** (lihat komentar baris pertama): ubah keduanya bersamaan |
+| `src/styles/` | `tokens.css` (warna & ukuran), `ui.css` (elemen standar) |
+| `functions/` | Cloud Function laporan PDF |
+
+## Dokumen
+
+- [docs/STANDAR_UI.md](docs/STANDAR_UI.md): standar warna, ukuran, komponen, dan library. Wajib diikuti.
+- [docs/RENCANA_MOBILE.md](docs/RENCANA_MOBILE.md): rencana & status perombakan versi mobile.

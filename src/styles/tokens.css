@@ -1,0 +1,113 @@
+/* Inter (variable, subset latin) di-host sendiri: tidak bergantung pada Google Fonts.
+   Sumber: @fontsource-variable/inter 5.3.0, lisensi SIL OFL 1.1 (assets/fonts/LICENSE-Inter.txt). Sama dengan Snapme_Desktop. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../assets/fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ===================================================================================
+   TOKEN — satu-satunya sumber warna & skala (docs/STANDAR_UI.md).
+   Warna = nilai tema terang Snapme_Desktop. Ukuran disesuaikan untuk layar sentuh (lihat STANDAR_UI §3).
+   =================================================================================== */
+:root {
+  /* Netral */
+  --bg-base: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #eef2f7;
+  --bg-active: #e3edf9;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #5b6b82;
+
+  /* Aksen tunggal: biru logo Snap Me */
+  --accent-primary: #0058b3;
+  --accent-subtle: rgba(0, 88, 179, 0.1);
+  --text-on-accent: #ffffff;
+  --focus-ring: rgba(0, 88, 179, 0.3);
+
+  /* Status (info = aksen) */
+  --success: #047857;
+  --success-subtle: rgba(4, 120, 87, 0.1);
+  --warning: #b45309;
+  --warning-subtle: rgba(180, 83, 9, 0.1);
+  --danger: #b91c1c;
+  --danger-subtle: rgba(185, 28, 28, 0.08);
+  --text-on-danger: #ffffff;
+
+  /* Warna kategori paket/studio — data, bukan UI */
+  --cat-sky: #0ea5e9;
+  --cat-emerald: #10b981;
+  --cat-amber: #f59e0b;
+  --cat-teal: #14b8a6;
+  --cat-rose: #f43f5e;
+  --cat-violet: #8b5cf6;
+  --cat-pink: #ec4899;
+  --cat-slate: #94a3b8;
+
+  --overlay: rgba(15, 23, 42, 0.4);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --knob: #ffffff;
+
+  /* Tipografi. Teks dasar 14px (Desktop 13px) supaya nyaman dibaca di HP.
+     Isian 16px: Safari iOS memperbesar halaman bila isian yang difokus lebih kecil dari 16px. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 14px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 20px;
+  --fs-display: 28px;
+  --fs-input: 16px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  /* Spasi (kelipatan 4), radius */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px; /* bottom sheet di HP */
+  --radius-full: 9999px;
+
+  /* Ukuran kontrol: target sentuh minimal 40px (Desktop 32px) */
+  --control-h: 40px;
+  --control-h-sm: 32px;
+  --control-h-lg: 48px;
+
+  /* Kerangka aplikasi mobile */
+  --appbar-h: 56px;
+  --bottomnav-h: 64px;
+  --page-gutter: 16px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --transition-fast: 150ms ease;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Lapisan (z-index), urut dari bawah */
+  --z-nav: 100; /* app bar & navbar bawah */
+  --z-overlay: 1000; /* modal & bottom sheet */
+  --z-toast: 1100; /* notifikasi selalu di atas */
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 24px;
+  }
+}

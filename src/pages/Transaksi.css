@@ -1,0 +1,110 @@
+/* Transaksi — prefix "trx-". Tab, badge, tombol, dan card memakai komponen/class standar. */
+
+/* ----- Toolbar: periode + filter (menempel di bawah app bar) ----- */
+.trx-toolbar {
+  position: sticky;
+  top: calc(var(--appbar-h) + var(--safe-top));
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--page-gutter);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.trx-custom { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); }
+.trx-custom .input { flex: 1; min-width: 0; }
+.trx-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.trx-filters .tabs:first-child { flex: 1; }
+
+/* ----- Ringkasan (sama dengan Desktop) ----- */
+.trx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.trx-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trx-stat.is-hero { grid-column: 1 / -1; }
+.trx-stat-label { font-size: var(--fs-sm); color: var(--text-secondary); }
+.trx-stat-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.trx-stat.is-hero .trx-stat-value { font-size: var(--fs-display); color: var(--accent-primary); }
+.trx-stat-hint { font-size: var(--fs-sm); color: var(--text-muted); }
+@media (min-width: 640px) {
+  .trx-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+.trx-categories { display: flex; flex-direction: column; gap: var(--space-3); list-style: none; }
+.trx-category-head { display: flex; justify-content: space-between; gap: var(--space-2); margin-bottom: 6px; }
+.trx-category-value { color: var(--text-secondary); }
+.trx-bar { height: 8px; overflow: hidden; border-radius: var(--radius-full); background: var(--bg-hover); }
+.trx-bar-fill { height: 100%; border-radius: var(--radius-full); background: var(--accent-primary); }
+
+/* ----- Grafik waktu sibuk (batang CSS, tanpa library) ----- */
+.trx-chart { display: flex; align-items: stretch; gap: 4px; height: 180px; overflow-x: auto; }
+.trx-chart-col { flex: 1 0 22px; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 22px; }
+.trx-chart-value { height: 14px; font-size: var(--fs-xs); color: var(--text-secondary); }
+.trx-chart-track { flex: 1; display: flex; align-items: flex-end; width: 100%; max-width: 32px; }
+.trx-chart-bar { width: 100%; min-height: 2px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--accent-primary); }
+.trx-chart-label { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+
+/* ----- Daftar transaksi ----- */
+.trx-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-2); }
+.trx-list-title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
+.trx-list-count { font-size: var(--fs-sm); color: var(--text-muted); }
+.trx-list { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.trx-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
+.trx-card.is-expanded { border-color: var(--accent-primary); }
+.trx-card.is-deleted { background: var(--bg-base); }
+.trx-card-head {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.trx-card-head:active { background: var(--bg-hover); }
+.trx-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.trx-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.trx-card-sub { font-size: var(--fs-sm); color: var(--text-muted); }
+.trx-card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.trx-card-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.trx-card-total { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.trx-method { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); color: var(--text-secondary); }
+.trx-chevron { color: var(--text-muted); transition: transform var(--transition-fast); }
+.trx-card.is-expanded .trx-chevron { transform: rotate(180deg); }
+
+.trx-card-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+.trx-items { display: flex; flex-direction: column; gap: var(--space-2); list-style: none; }
+.trx-item { display: flex; align-items: center; gap: var(--space-3); }
+.trx-item-thumb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  object-fit: cover;
+}
+.trx-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.trx-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.trx-item-total { font-weight: var(--fw-medium); color: var(--text-primary); }
+.trx-payment { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--bg-base); }
+.trx-payment dt { font-size: var(--fs-xs); color: var(--text-muted); }
+.trx-payment dd { font-weight: var(--fw-medium); color: var(--text-primary); }
+.trx-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.trx-card-actions > .btn { flex: 1 1 auto; }
+@media (hover: hover) {
+  .trx-card-head:hover { background: var(--bg-hover); }
+}
