@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { LogIn, LogOut } from 'lucide-react';
+import { LogOut, MonitorSmartphone, RotateCw, WifiOff } from 'lucide-react';
 import { auth, db } from './firebase';
 import { managerTeamIds } from './utils/managerScope';
 import { useStudioAccounts } from './hooks/useStudioAccounts';
 import { canManageStaff } from './constants/roles';
-import { Button, Card, Spinner, useToast } from './components/ui';
-import logo from './assets/logo.png';
+import { Button, Spinner } from './components/ui';
 import AppShell from './components/layout/AppShell';
 import OwnerOnboarding from './components/auth/OwnerOnboarding';
+import AuthNotice from './components/auth/AuthNotice';
+import LoginScreen from './components/auth/LoginScreen';
 import { refreshAccessClaims, resolveAccess } from './components/auth/access';
 
 // Halaman dimuat saat dibuka, supaya kode satu halaman tidak ikut diunduh di awal
@@ -19,38 +20,6 @@ const Transaksi = lazy(() => import('./pages/Transaksi'));
 const Layanan = lazy(() => import('./pages/Layanan'));
 const Tim = lazy(() => import('./pages/Tim'));
 const Profil = lazy(() => import('./pages/Profil'));
-
-function Login() {
-  const toast = useToast();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (error) {
-      console.error('Gagal login', error);
-      // Popup ditutup sendiri oleh user bukan kesalahan
-      if (error.code !== 'auth/popup-closed-by-user') toast.error('Gagal login', error.message);
-      setIsLoggingIn(false);
-    }
-  };
-
-  return (
-    <main className="screen-center">
-      <Card className="screen-card">
-        <img src={logo} alt="Snap Me" className="screen-logo" />
-        <h1 className="page-title">Snapme Manager</h1>
-        <p className="page-subtitle">Masuk untuk memantau jadwal, transaksi, dan layanan studio.</p>
-        <div className="form-stack">
-          <Button variant="primary" size="lg" block icon={LogIn} loading={isLoggingIn} onClick={handleLogin}>
-            Login dengan Google
-          </Button>
-        </div>
-      </Card>
-    </main>
-  );
-}
 
 const VIEW_MANAGER_KEY = 'snapme.owner.viewManager';
 const readViewManager = () => {
@@ -153,35 +122,63 @@ function App() {
   }
 
   if (!user) {
-    return <Login />;
+    return <LoginScreen />;
   }
 
   if (access?.status === 'onboarding') {
-    return <OwnerOnboarding user={user} onComplete={() => checkAccess(user)} onLogout={handleLogout} />;
+    return (
+      <OwnerOnboarding
+        user={user}
+        onComplete={() => checkAccess(user)}
+        onRetry={() => checkAccess(user)}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (access?.status === 'studio') {
+    return (
+      <AuthNotice
+        icon={MonitorSmartphone}
+        tone="warning"
+        title="Akun ini khusus Snap Me Desktop"
+        description="Akun studio dipakai bersama semua staff di laptop studio, jadi tidak bisa membuka Snap Me Manager."
+        user={user}
+        steps={[
+          { title: 'Owner studio', text: 'Masuk dengan akun Google pribadi owner.' },
+          {
+            title: 'Pengelola studio',
+            text: 'Minta owner menambahkan email pribadi Anda lewat Profil → Akses Snap Me Manager, lalu masuk dengan email itu.',
+          },
+        ]}
+        actions={
+          <Button variant="primary" size="lg" block icon={LogOut} onClick={handleLogout}>
+            Masuk dengan akun lain
+          </Button>
+        }
+      />
+    );
   }
 
   if (access?.status !== 'ok' || !orgId) {
     return (
-      <main className="screen-center">
-        <Card className="screen-card">
-          <h1 className="page-title">{access?.status === 'studio' ? 'Akun studio' : 'Gagal memeriksa akun'}</h1>
-          <p className="page-subtitle">
-            {access?.status === 'studio'
-              ? 'Akun ini adalah akun studio untuk Snapme Desktop. Snapme Manager hanya untuk owner; masuk dengan akun Google owner.'
-              : `Periksa koneksi internet lalu muat ulang halaman. (${access?.message || 'tanpa keterangan'})`}
-          </p>
-          <div className="form-stack">
-            <div className="account-box">
-              Email: <strong>{user.email}</strong>
-              <br />
-              UID: <span className="num">{user.uid}</span>
-            </div>
-            <Button block icon={LogOut} onClick={handleLogout}>
+      <AuthNotice
+        icon={WifiOff}
+        tone="danger"
+        title="Gagal memeriksa akun"
+        description={`Periksa koneksi internet, lalu coba lagi.${access?.message ? ` (${access.message})` : ''}`}
+        user={user}
+        actions={
+          <>
+            <Button variant="primary" size="lg" block icon={RotateCw} onClick={() => checkAccess(user)}>
+              Coba lagi
+            </Button>
+            <Button size="lg" block icon={LogOut} onClick={handleLogout}>
               Keluar
             </Button>
-          </div>
-        </Card>
-      </main>
+          </>
+        }
+      />
     );
   }
 
@@ -206,14 +203,7 @@ function App() {
             {canManage && <Route path="/tim" element={<Tim {...session} {...branchProps} studio={studio} />} />}
             <Route
               path="/profil"
-              element={
-                <Profil
-                  {...session}
-                  {...branchProps}
-                  viewManagerId={viewManagerId}
-                  onLogout={handleLogout}
-                />
-              }
+              element={<Profil {...session} {...branchProps} viewManagerId={viewManagerId} onLogout={handleLogout} />}
             />
             <Route path="*" element={<Navigate to="/timeline" replace />} />
           </Routes>

@@ -1,0 +1,163 @@
+/* Layar sebelum masuk (AuthNotice, OwnerOnboarding) — prefix "auth-". */
+
+.auth-card {
+  width: min(440px, 100%);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+.auth-logo {
+  display: block;
+  height: 48px;
+  max-width: 80%;
+  margin: 0 auto var(--space-5);
+  object-fit: contain;
+}
+.auth-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-3);
+  border-radius: var(--radius-full);
+}
+.auth-icon-accent {
+  background: var(--accent-subtle);
+  color: var(--accent-primary);
+}
+.auth-icon-warning {
+  background: var(--warning-subtle);
+  color: var(--warning);
+}
+.auth-icon-danger {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+.auth-title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.auth-description {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.auth-account {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  margin-top: var(--space-4);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: var(--bg-base);
+  text-align: left;
+}
+.auth-account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.auth-account-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.auth-account-email {
+  overflow: hidden;
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.auth-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg-base);
+  list-style: none;
+  text-align: left;
+}
+.auth-step {
+  display: flex;
+  gap: var(--space-3);
+}
+.auth-step-number {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  color: var(--accent-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.auth-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.auth-step-title {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.auth-step-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.auth-hint {
+  margin-top: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* Pemisah "atau" & form kode owner (OwnerOnboarding) */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border-subtle);
+}
+.auth-section-title {
+  margin-top: var(--space-4);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.auth-section-text {
+  margin-top: var(--space-1);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.auth-form {
+  margin-top: var(--space-3);
+  text-align: left;
+}
+.auth-code {
+  text-align: center;
+  letter-spacing: 0.15em;
+}
