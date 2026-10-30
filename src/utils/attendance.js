@@ -1,6 +1,7 @@
 // Salinan Snapme_Desktop/src/utils/attendance.js: ubah keduanya bersamaan.
-// Absensi staff (docs/RENCANA_TANPA_ROLE.md §3): jadwal mingguan berversi (shiftSchedules) dibandingkan dengan catatan
-// kerja (attendance). Semua tanggal "YYYY-MM-DD" kalender lokal, jam "HH:mm". Minggu dimulai Senin.
+// Absensi staff (docs/RENCANA_TANPA_ROLE.md §3): catatan kerja (attendance) dinilai dari jam buka & tutup cabang
+// (buka terlambat, lembur); jadwal mingguan berversi (shiftSchedules) hanya acuan siapa yang jaga. Semua tanggal
+// "YYYY-MM-DD" kalender lokal, jam "HH:mm". Minggu dimulai Senin.
 import { getLocalDateString } from './format';
 
 export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -140,146 +141,201 @@ export function scheduledOn(versions, dateStr) {
   return [...shifts].sort((a, b) => (minutesOf(a.start) ?? 0) - (minutesOf(b.start) ?? 0));
 }
 
-/** Label & tone Badge per status staffDayStatus. */
+/** Label & tone Badge per status baris dayRows. Jadwal hanya info ("Terjadwal"), tidak dinilai. */
 export const STATUS_INFO = {
   hadir: { label: 'Hadir', tone: 'success' },
-  terlambat: { label: 'Terlambat', tone: 'warning' },
-  'tidak-hadir': { label: 'Tidak hadir', tone: 'danger' },
-  belum: { label: 'Belum dicatat', tone: 'neutral' },
+  jaga: { label: 'Sedang jaga', tone: 'accent' },
   terjadwal: { label: 'Terjadwal', tone: 'neutral' },
-  tambahan: { label: 'Tambahan', tone: 'accent' },
 };
 
 /** Catatan yang masih berlaku (belum dihapus). */
 export const activeRecords = (records) => records.filter((r) => !r.deletedAt);
 
-/**
- * Status satu staff pada satu tanggal.
- * - shift: jadwalnya (atau null), records: catatan kerjanya hari itu
- * - status: 'hadir' | 'terlambat' | 'tidak-hadir' | 'belum' (hari ini, belum dicatat) | 'terjadwal' (tanggal depan) |
- *   'tambahan' (hadir tanpa jadwal)
- * - lateMin / earlyMin: terlambat / pulang lebih awal dibanding jadwal, setelah toleransi
- */
-export function staffDayStatus({ shift, records, dateStr, today, toleranceMin = DEFAULT_TOLERANCE_MIN }) {
-  const minutes = records.reduce((sum, r) => sum + shiftMinutes(r.start, r.end), 0);
-  if (!records.length) {
-    const status = dateStr > today ? 'terjadwal' : dateStr === today ? 'belum' : 'tidak-hadir';
-    return { status, minutes: 0, lateMin: 0, earlyMin: 0 };
-  }
-  if (!shift) return { status: 'tambahan', minutes, lateMin: 0, earlyMin: 0 };
+/** Sedang jaga: catatan dari "Mulai jaga" (Timeline Snapme Desktop) yang jam selesainya masih kosong. */
+export const isOnDuty = (record) => !record.deletedAt && !record.end;
 
-  const firstStart = Math.min(...records.map((r) => minutesOf(r.start) ?? Infinity));
-  const lastEnd = Math.max(...records.map((r) => minutesOf(r.end) ?? -Infinity));
-  const late = firstStart - (minutesOf(shift.start) ?? firstStart);
-  const early = (minutesOf(shift.end) ?? lastEnd) - lastEnd;
-  const lateMin = late > toleranceMin ? late : 0;
-  const earlyMin = early > toleranceMin ? early : 0;
-  return {
-    status: lateMin ? 'terlambat' : 'hadir',
-    minutes,
-    lateMin,
-    earlyMin,
-  };
+/** "09:00–17:00", atau "09:00–sekarang" untuk jaga yang belum selesai. */
+export const recordRange = (record) => `${record.start}–${record.end || 'sekarang'}`;
+
+/** Jam sekarang "HH:MM" (waktu lokal). */
+export const currentTime = (date = new Date()) =>
+  `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+/** Lama jaga sampai sekarang, dalam menit, untuk catatan yang belum selesai. */
+export const dutyMinutes = (record, now = new Date()) => shiftMinutes(record.start, currentTime(now));
+
+/** Lama jaga: 45 → "45m", 135 → "2j 15m". */
+export const formatElapsed = (minutes) => (minutes < 60 ? `${minutes}m` : formatDuration(minutes));
+
+/** Jam kerja ringkas untuk kalender, dibulatkan ke setengah jam: 480 → "8j", 450 → "7,5j", 45 → "45m". */
+export const formatHoursShort = (minutes) =>
+  minutes < 60 ? `${minutes}m` : `${String(Math.round(minutes / 30) / 2).replace('.', ',')}j`;
+
+/** Inisial untuk ruang sempit: "Ani Nur" → "AN", "Budi" → "BU". */
+export function nameInitials(name) {
+  const words = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return '?';
+  return (words.length > 1 ? words[0][0] + words[1][0] : words[0].slice(0, 2)).toUpperCase();
+}
+
+/** Nama depan: "Ani Nur" → "Ani". */
+export const firstName = (name) =>
+  String(name || '')
+    .trim()
+    .split(/\s+/)[0] || '?';
+
+// ----- Jam buka & tutup -----
+// Disimpan per cabang di settings/attendance.openingHours[managerId] = { mon: { open, close } | { closed: true }, … }.
+// Penilaian absensi memakai jam ini (bukan jadwal mingguan): buka terlambat dan lembur.
+
+export const DEFAULT_OPENING = { open: '09:00', close: '21:00' };
+
+/** Jam buka tanggal itu: { open, close }, { closed: true } bila tutup, null bila jam buka cabang belum diatur. */
+export function hoursOn(openingHours, dateStr) {
+  const day = openingHours?.[dayKeyOf(dateStr)];
+  return day?.closed || (minutesOf(day?.open) !== null && minutesOf(day?.close) !== null) ? day : null;
+}
+
+/** Pesan kesalahan jam buka satu hari, atau '' bila valid (tutup selalu valid). */
+export function openingError(day) {
+  if (day.closed) return '';
+  if (minutesOf(day.open) === null || minutesOf(day.close) === null) return 'Isi jam buka dan jam tutup.';
+  if (!shiftMinutes(day.open, day.close)) return 'Jam tutup harus setelah jam buka.';
+  return '';
+}
+
+/** Selisih menit yang melewati toleransi; 0 bila masih dalam toleransi. */
+const beyondTolerance = (minutes, toleranceMin) => (minutes > toleranceMin ? minutes : 0);
+
+/**
+ * Penilaian satu tanggal dari catatan kerjanya (tanpa yang dihapus) dan jam buka hari itu (hoursOn):
+ * - opener: catatan yang paling awal dimulai (staff yang membuka);
+ * - lateOpenMin: jaga pertama dimulai lewat jam buka, setelah toleransi (0 bila tepat waktu / jam belum diatur);
+ * - overtimeByStaff: { staffId: menit kerja lewat jam tutup, setelah toleransi }. Jaga yang belum selesai belum dihitung.
+ * Hari tutup atau jam buka yang belum diatur tidak dinilai.
+ */
+export function assessDay({ records, hours, toleranceMin = DEFAULT_TOLERANCE_MIN }) {
+  const startOf = (r) => minutesOf(r.start) ?? Infinity;
+  const opener = records.reduce((first, r) => (!first || startOf(r) < startOf(first) ? r : first), null);
+  const result = { opener, lateOpenMin: 0, overtimeByStaff: {} };
+  if (!hours || hours.closed) return result;
+
+  const open = minutesOf(hours.open);
+  const close = minutesOf(hours.close);
+  if (opener && startOf(opener) !== Infinity)
+    result.lateOpenMin = beyondTolerance(startOf(opener) - open, toleranceMin);
+
+  const over = {};
+  records.forEach((r) => {
+    const end = minutesOf(r.end);
+    if (end === null) return;
+    // Kerja yang baru dimulai setelah tutup dihitung lembur seluruhnya
+    const minutes = end - Math.max(close, minutesOf(r.start) ?? close);
+    if (minutes > 0) over[r.staffId] = (over[r.staffId] || 0) + minutes;
+  });
+  Object.entries(over).forEach(([staffId, minutes]) => {
+    const counted = beyondTolerance(minutes, toleranceMin);
+    if (counted) result.overtimeByStaff[staffId] = counted;
+  });
+  return result;
 }
 
 /**
- * Baris per staff pada satu tanggal: semua yang terjadwal, ditambah yang mencatat kerja tanpa jadwal.
- * records: catatan tanggal itu (sudah tanpa yang dihapus). Hasil urut: terjadwal dulu (urut jam), lalu tambahan.
+ * Baris per staff pada satu tanggal: yang mencatat kerja (urut jam mulai, dinilai dari jam buka & tutup), lalu yang
+ * terjadwal tetapi tidak mencatat (info saja; jadwal mingguan tidak ikut penilaian). records: catatan tanggal itu tanpa
+ * yang dihapus; openingHours: jam buka cabang.
+ * Baris: { staffId, shift, records, minutes, status: 'hadir' | 'jaga' | 'terjadwal', isOpener, lateOpenMin, overtimeMin }
  */
-export function dayRows({ versions, records, dateStr, today, toleranceMin }) {
-  const shifts = scheduledOn(versions, dateStr);
+export function dayRows({ versions, records, dateStr, openingHours, toleranceMin }) {
+  const shiftOf = new Map(scheduledOn(versions, dateStr).map((s) => [s.staffId, s]));
+  const { opener, lateOpenMin, overtimeByStaff } = assessDay({
+    records,
+    hours: hoursOn(openingHours, dateStr),
+    toleranceMin,
+  });
   const byStaff = new Map();
-  records.forEach((r) => byStaff.set(r.staffId, [...(byStaff.get(r.staffId) || []), r]));
+  [...records]
+    .sort((a, b) => (minutesOf(a.start) ?? 0) - (minutesOf(b.start) ?? 0))
+    .forEach((r) => byStaff.set(r.staffId, [...(byStaff.get(r.staffId) || []), r]));
 
-  const rows = shifts.map((shift) => {
-    const own = byStaff.get(shift.staffId) || [];
-    byStaff.delete(shift.staffId);
+  const rows = [...byStaff].map(([staffId, own]) => {
+    const isOpener = opener?.staffId === staffId;
     return {
-      staffId: shift.staffId,
-      shift,
+      staffId,
+      shift: shiftOf.get(staffId) || null,
       records: own,
-      ...staffDayStatus({ shift, records: own, dateStr, today, toleranceMin }),
+      minutes: own.reduce((sum, r) => sum + shiftMinutes(r.start, r.end), 0),
+      status: own.some((r) => !r.end) ? 'jaga' : 'hadir',
+      isOpener,
+      lateOpenMin: isOpener ? lateOpenMin : 0,
+      overtimeMin: overtimeByStaff[staffId] || 0,
     };
   });
-  byStaff.forEach((own, staffId) =>
-    rows.push({
-      staffId,
-      shift: null,
-      records: own,
-      ...staffDayStatus({
-        shift: null,
-        records: own,
-        dateStr,
-        today,
-        toleranceMin,
-      }),
-    }),
-  );
+  shiftOf.forEach((shift, staffId) => {
+    if (!byStaff.has(staffId))
+      rows.push({
+        staffId,
+        shift,
+        records: [],
+        minutes: 0,
+        status: 'terjadwal',
+        isOpener: false,
+        lateOpenMin: 0,
+        overtimeMin: 0,
+      });
+  });
   return rows;
 }
 
-/** Ringkasan satu tanggal untuk sel kalender: jumlah terjadwal, hadir, bermasalah (terlambat/tidak hadir). */
+/** Ringkasan satu tanggal untuk sel kalender: jumlah staff yang bekerja, buka terlambat, ada lembur. */
 export function daySummary(rows) {
-  const count = (statuses) => rows.filter((r) => statuses.includes(r.status)).length;
   return {
-    scheduled: rows.filter((r) => r.shift).length,
-    present: count(['hadir', 'terlambat', 'tambahan']),
-    late: count(['terlambat']),
-    absent: count(['tidak-hadir']),
+    present: rows.filter((r) => r.records.length).length,
+    lateOpen: rows.some((r) => r.lateOpenMin),
+    overtime: rows.some((r) => r.overtimeMin),
   };
 }
 
-const emptyRecap = () => ({
-  scheduled: 0,
-  present: 0,
-  absent: 0,
-  extra: 0,
-  late: 0,
-  earlyLeave: 0,
-  minutes: 0,
-});
-
 /**
- * Rekap performa per staff dalam rentang tanggal: { [staffId]: { scheduled, present, absent, extra, late, earlyLeave,
- * minutes } }. Shift di tanggal yang belum lewat tidak dihitung sebagai jadwal (belum bisa dinilai), kecuali sudah
- * ada catatannya.
+ * Rekap per staff dalam rentang tanggal: { [staffId]: { days, minutes, lateOpen, overtimeMin } }
+ * - days: hari bekerja, minutes: total jam kerja (jaga yang belum selesai belum dihitung);
+ * - lateOpen: berapa kali staff ini membuka studio terlambat; overtimeMin: total menit lembur.
  */
-export function attendanceRecap({ versions, records, from, to, today, toleranceMin }) {
+export function attendanceRecap({ records, from, to, openingHours, toleranceMin }) {
   const byDate = new Map();
   activeRecords(records).forEach((r) => {
     if (r.date >= from && r.date <= to) byDate.set(r.date, [...(byDate.get(r.date) || []), r]);
   });
 
   const recap = {};
-  const of = (staffId) => (recap[staffId] ||= emptyRecap());
-  datesBetween(from, to).forEach((dateStr) => {
-    dayRows({
-      versions,
-      records: byDate.get(dateStr) || [],
-      dateStr,
-      today,
-      toleranceMin,
-    }).forEach((row) => {
-      if (row.status === 'terjadwal' || row.status === 'belum') return;
-      const r = of(row.staffId);
-      if (row.shift) r.scheduled += 1;
-      if (row.status === 'tidak-hadir') r.absent += 1;
-      else r.present += 1;
-      if (row.status === 'tambahan') r.extra += 1;
-      if (row.lateMin) r.late += 1;
-      if (row.earlyMin) r.earlyLeave += 1;
+  byDate.forEach((dayRecords, dateStr) => {
+    dayRows({ versions: [], records: dayRecords, dateStr, openingHours, toleranceMin }).forEach((row) => {
+      const r = (recap[row.staffId] ||= { days: 0, minutes: 0, lateOpen: 0, overtimeMin: 0 });
+      r.days += 1;
       r.minutes += row.minutes;
+      if (row.lateOpenMin) r.lateOpen += 1;
+      r.overtimeMin += row.overtimeMin;
     });
   });
   return recap;
 }
 
-/** Catatan baru bertumpuk dengan catatan staff yang sama di tanggal yang sama? (exceptId = catatan yang sedang diubah) */
+/**
+ * Catatan baru bertumpuk dengan catatan staff yang sama di tanggal yang sama? (exceptId = catatan yang sedang diubah)
+ * Jaga yang belum selesai dianggap berlangsung sampai akhir hari.
+ */
 export function overlapsRecord(records, { staffId, date, start, end }, exceptId) {
   const a = minutesOf(start);
   const b = minutesOf(end);
   return activeRecords(records).some(
     (r) =>
-      r.id !== exceptId && r.staffId === staffId && r.date === date && minutesOf(r.start) < b && a < minutesOf(r.end),
+      r.id !== exceptId &&
+      r.staffId === staffId &&
+      r.date === date &&
+      minutesOf(r.start) < b &&
+      a < (r.end ? minutesOf(r.end) : 24 * 60),
   );
 }

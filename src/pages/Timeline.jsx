@@ -10,6 +10,7 @@ import AddBookingSheet from '../components/timeline/AddBookingSheet';
 import BookingDetailSheet from '../components/timeline/BookingDetailSheet';
 import PackageAdjustSheet from '../components/timeline/PackageAdjustSheet';
 import { isPhotoboothId } from '../components/timeline/bookingForm';
+import OnDutyBar from '../components/timeline/OnDutyBar';
 import { useTimelineData } from '../components/timeline/useTimelineData';
 import { getLocalDateString } from '../utils/format';
 import { normalizePhoneNumber } from '../utils/phone';
@@ -277,6 +278,7 @@ export default function Timeline({ orgId, userMeta, managerId, managerIds }) {
       <div className="tl-toolbar">
         <DateStrip value={selectedDate} today={today} onChange={setSelectedDate} />
         <RecapBar tab={tab} onTabChange={setTab} summary={recapSummary(shown, isToday)} isToday={isToday} />
+        <OnDutyBar orgId={orgId} managerId={managerId} />
       </div>
 
       {!isLoaded ? (

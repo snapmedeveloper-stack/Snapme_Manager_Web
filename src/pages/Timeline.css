@@ -51,6 +51,10 @@
 .tl-recap-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-3); font-size: var(--fs-sm); color: var(--text-secondary); }
 .tl-recap-stats strong { color: var(--text-primary); font-weight: var(--fw-semibold); }
 .tl-stat { display: inline-flex; align-items: center; gap: 6px; }
+/* Staff yang sedang jaga (components/timeline/OnDutyBar) */
+.tl-duty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--fs-sm); }
+.tl-duty-label { display: inline-flex; align-items: center; gap: var(--space-1); font-weight: var(--fw-medium); color: var(--text-secondary); }
+.tl-duty-empty { color: var(--text-muted); }
 @media (min-width: 768px) {
   .tl-recap .tabs { width: auto; }
 }

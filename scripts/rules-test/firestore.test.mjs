@@ -93,6 +93,8 @@ await t('studio query transaksi 30 hari', false, () => getDocs(query(collection(
 await t('studio baca transaksi lama', false, () => getDoc(doc(studio, `organizations/${O}/transactions/tOld`)));
 await t('studio buat transaksi (Kasir)', true, () => addDoc(collection(studio, `organizations/${O}/transactions`), { total: 5, createdBy: 'stu', createdAt: serverTimestamp() }));
 await t('studio buat transaksi atas nama lain', false, () => addDoc(collection(studio, `organizations/${O}/transactions`), { total: 5, createdBy: 'owner', createdAt: serverTimestamp() }));
+await t('studio buat transaksi + penanggung jawab paket', true, () => addDoc(collection(studio, `organizations/${O}/transactions`), { total: 5, createdBy: 'stu', createdAt: serverTimestamp(), handlers: [{ staffId: 's1', name: 'Rina' }], handlerFee: 25000 }));
+await t('studio koreksi penanggung jawab', false, () => updateDoc(doc(studio, `organizations/${O}/transactions/tNew`), { handlers: [{ staffId: 's1', name: 'Rina' }] }));
 await t('studio hapus transaksi (isDeleted)', false, () => updateDoc(doc(studio, `organizations/${O}/transactions/tNew`), { isDeleted: true }));
 await t('studio baca paket', true, () => getDoc(doc(studio, `organizations/${O}/packages/p1`)));
 await t('studio ubah harga paket', false, () => updateDoc(doc(studio, `organizations/${O}/packages/p1`), { price: 1 }));
@@ -150,6 +152,19 @@ await t('owner baca transaksi lama', true, () => getDoc(doc(owner, `organization
 await t('owner hapus transaksi (isDeleted)', true, () => updateDoc(doc(owner, `organizations/${O}/transactions/tOld`), { isDeleted: true }));
 await t('owner koreksi absensi lama', true, () => updateDoc(doc(owner, `organizations/${O}/attendance/aOld`), { end: '16:00' }));
 await t('owner atur staff & jadwal', true, () => setDoc(doc(owner, `organizations/${O}/shiftSchedules/m1_2026-10-26`), { managerId: 'm1', days: {} }));
+await t('owner simpan tarif gaji', true, () => setDoc(doc(owner, `organizations/${O}/payrollSettings/m1_2026-10`), { managerId: 'm1', month: '2026-10', hourlyRate: 15000, mealAllowance: 20000 }));
+await t('owner query tarif gaji cabang', true, () => getDocs(query(collection(owner, `organizations/${O}/payrollSettings`), where('managerId', '==', 'm1'))));
+await t('owner tandai gaji dibayar', true, () => setDoc(doc(owner, `organizations/${O}/payrolls/2026-10_s1`), { month: '2026-10', staffId: 's1', total: 2025000 }));
+await t('owner query gaji dibayar per bulan', true, () => getDocs(query(collection(owner, `organizations/${O}/payrolls`), where('month', '==', '2026-10'))));
+await t('owner koreksi penanggung jawab', true, () => updateDoc(doc(owner, `organizations/${O}/transactions/tOld`), { handlers: [{ staffId: 's1', name: 'Rina' }], handlerFee: 25000 }));
+await t('studio baca tarif gaji', false, () => getDocs(query(collection(studio, `organizations/${O}/payrollSettings`), where('managerId', '==', 'm1'))));
+await t('studio ubah tarif gaji', false, () => setDoc(doc(studio, `organizations/${O}/payrollSettings/m1_2026-10`), { hourlyRate: 9 }));
+await t('studio baca gaji dibayar', false, () => getDocs(query(collection(studio, `organizations/${O}/payrolls`), where('month', '==', '2026-10'))));
+await t('owner tambah bonus staff', true, () => addDoc(collection(owner, `organizations/${O}/payrollBonuses`), { managerId: 'm1', month: '2026-10', staffId: 's1', amount: 100000, note: 'Target' }));
+await t('owner query bonus per bulan', true, () => getDocs(query(collection(owner, `organizations/${O}/payrollBonuses`), where('month', '==', '2026-10'))));
+await t('studio baca bonus', false, () => getDocs(query(collection(studio, `organizations/${O}/payrollBonuses`), where('month', '==', '2026-10'))));
+await t('studio tambah bonus', false, () => addDoc(collection(studio, `organizations/${O}/payrollBonuses`), { staffId: 's1', amount: 1 }));
+await t('orang lain baca tarif gaji', false, () => getDoc(doc(stranger, `organizations/${O}/payrollSettings/m1_2026-10`)));
 await t('owner baca log keamanan', true, () => getDocs(collection(owner, `organizations/${O}/securityAlerts`)));
 await t('owner baca organisasi lain', false, () => getDoc(doc(owner, 'organizations', 'org2')));
 await t('studio yang dinonaktifkan owner kehilangan akses', false, () => getDoc(doc(studio, `organizations/${O}/bookings/b1`)));

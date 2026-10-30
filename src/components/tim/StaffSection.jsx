@@ -3,16 +3,20 @@ import { Pencil, Plus, Users } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Modal, SortableList, Switch, useToast } from '../ui';
 import { writeInBackground } from '../../utils/firestoreWrite';
 import { nextOrder, saveOrder } from '../layanan/layananUtils';
+import { STAFF_LABELS, labelsOf } from './staffLabels';
 import { addStaff, updateStaff } from './timData';
 
 /** Nama sudah dipakai staff lain di cabang ini? (huruf besar/kecil diabaikan) */
 const nameTaken = (staff, name, exceptId) =>
   staff.some((s) => s.id !== exceptId && s.name.trim().toLowerCase() === name.trim().toLowerCase());
 
-function RenameStaff({ person, staff, onSave, onClose }) {
+/** Ubah nama dan label staff (label memberi tunjangan di Gaji). onSave({ name, labels }). */
+function EditStaff({ person, staff, onSave, onClose }) {
   const formId = useId();
   const [name, setName] = useState(person.name);
+  const [labels, setLabels] = useState(() => labelsOf(person).map((l) => l.key));
   const [error, setError] = useState('');
+  const toggleLabel = (key, on) => setLabels((prev) => (on ? [...prev, key] : prev.filter((k) => k !== key)));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -22,7 +26,8 @@ function RenameStaff({ person, staff, onSave, onClose }) {
       setError(`Nama "${value}" sudah dipakai staff lain.`);
       return;
     }
-    onSave(value);
+    // Urutan mengikuti STAFF_LABELS supaya tersimpan rapi apa pun urutan ketukannya
+    onSave({ name: value, labels: STAFF_LABELS.filter((l) => labels.includes(l.key)).map((l) => l.key) });
   };
 
   return (
@@ -30,7 +35,7 @@ function RenameStaff({ person, staff, onSave, onClose }) {
       open
       onClose={onClose}
       size="sm"
-      title="Ubah nama staff"
+      title="Ubah staff"
       footer={
         <>
           <Button onClick={onClose}>Batal</Button>
@@ -56,6 +61,22 @@ function RenameStaff({ person, staff, onSave, onClose }) {
           {error && <span className="form-error">{error}</span>}
           <span className="form-hint">Catatan kerja lama ikut memakai nama baru.</span>
         </div>
+        <div className="form-group">
+          <span className="form-label">Label</span>
+          {STAFF_LABELS.map((l) => (
+            <div key={l.key} className="tim-switch-row">
+              <span>
+                {l.label}
+                <span className="form-hint">Tunjangan {l.basis}, nominalnya di Gaji → Atur.</span>
+              </span>
+              <Switch
+                checked={labels.includes(l.key)}
+                onChange={(on) => toggleLabel(l.key, on)}
+                ariaLabel={`Label ${l.label}`}
+              />
+            </div>
+          ))}
+        </div>
       </form>
     </Modal>
   );
@@ -63,6 +84,7 @@ function RenameStaff({ person, staff, onSave, onClose }) {
 
 /**
  * Daftar nama staff satu cabang. Staff tidak punya akun: namanya dipilih saat mencatat kerja di Snapme Desktop.
+ * Label Admin/CS (staffLabels) memberi tunjangan di Gaji.
  * Staff yang berhenti dinonaktifkan (bukan dihapus) supaya rekap lamanya tetap terbaca.
  */
 export default function StaffSection({ orgId, managerId, data, addInputRef }) {
@@ -70,7 +92,7 @@ export default function StaffSection({ orgId, managerId, data, addInputRef }) {
   const { staff } = data;
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
-  const [renaming, setRenaming] = useState(null);
+  const [editing, setEditing] = useState(null);
   const activeCount = staff.filter((s) => s.active !== false).length;
 
   const fail = (title) => (err) => toast.error(title, err.message, { persistent: true });
@@ -146,14 +168,23 @@ export default function StaffSection({ orgId, managerId, data, addInputRef }) {
             <>
               <div className="tim-row-main">
                 <span className={`tim-row-title${person.active === false ? ' is-muted' : ''}`}>{person.name}</span>
-                {person.active === false && <Badge>Nonaktif</Badge>}
+                {(person.active === false || labelsOf(person).length > 0) && (
+                  <span className="tim-row-badges">
+                    {labelsOf(person).map((l) => (
+                      <Badge key={l.key} tone="accent">
+                        {l.label}
+                      </Badge>
+                    ))}
+                    {person.active === false && <Badge>Nonaktif</Badge>}
+                  </span>
+                )}
               </div>
               <Button
                 variant="ghost"
                 iconOnly
                 icon={Pencil}
-                aria-label={`Ubah nama ${person.name}`}
-                onClick={() => setRenaming(person)}
+                aria-label={`Ubah ${person.name}`}
+                onClick={() => setEditing(person)}
               />
               <Switch
                 checked={person.active !== false}
@@ -170,14 +201,14 @@ export default function StaffSection({ orgId, managerId, data, addInputRef }) {
         />
       )}
 
-      {renaming && (
-        <RenameStaff
-          person={renaming}
+      {editing && (
+        <EditStaff
+          person={editing}
           staff={staff}
-          onClose={() => setRenaming(null)}
-          onSave={(name) => {
-            writeInBackground(() => updateStaff(orgId, renaming.id, { name }), fail('Gagal mengubah nama staff'));
-            setRenaming(null);
+          onClose={() => setEditing(null)}
+          onSave={(fields) => {
+            writeInBackground(() => updateStaff(orgId, editing.id, fields), fail('Gagal mengubah staff'));
+            setEditing(null);
           }}
         />
       )}

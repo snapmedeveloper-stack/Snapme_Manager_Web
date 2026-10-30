@@ -21,19 +21,25 @@ export default function PackageForm({ pkg, places, orgId, ownerId, nextOrder, on
     name: pkg?.name || '',
     price: pkg?.price != null ? String(pkg.price) : '',
     duration: String(pkg?.duration || DEFAULT_DURATION),
+    handlerFee: pkg?.handlerFee ? String(pkg.handlerFee) : '',
     color: pkg ? pkg.color || PACKAGE_FALLBACK_COLOR : DEFAULT_CATEGORY_COLOR,
     locations: initialLocations(pkg, places),
   }));
   const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
   const name = form.name.trim();
+  const price = Number(form.price) || 0;
+  const handlerFee = Math.max(0, Math.round(Number(form.handlerFee) || 0));
+  // Fee tidak boleh melebihi harga paket (aturan yang sama dipakai Kasir saat fee diubah)
+  const feeTooHigh = handlerFee > price;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name) return;
+    if (!name || feeTooHigh) return;
     const fields = {
       name,
-      price: Number(form.price) || 0,
+      price,
       duration: Number(form.duration) || DEFAULT_DURATION,
+      handlerFee,
       studios: form.locations.studios,
       photobooths: form.locations.photobooths,
       color: form.color,
@@ -62,7 +68,7 @@ export default function PackageForm({ pkg, places, orgId, ownerId, nextOrder, on
       footer={
         <>
           <Button onClick={onClose}>Batal</Button>
-          <Button type="submit" form={formId} variant="primary" disabled={!name}>
+          <Button type="submit" form={formId} variant="primary" disabled={!name || feeTooHigh}>
             {pkg ? 'Simpan Perubahan' : 'Tambah Paket'}
           </Button>
         </>
@@ -104,6 +110,23 @@ export default function PackageForm({ pkg, places, orgId, ownerId, nextOrder, on
               onChange={(e) => set('duration')(e.target.value)}
             />
           </div>
+        </div>
+        <div className="form-group">
+          <label htmlFor={`${formId}-fee`}>Fee penanggung jawab (Rp)</label>
+          <input
+            id={`${formId}-fee`}
+            className={`input${feeTooHigh ? ' is-error' : ''}`}
+            type="number"
+            min="0"
+            placeholder="0 = tanpa fee"
+            value={form.handlerFee}
+            onChange={(e) => set('handlerFee')(e.target.value)}
+          />
+          {feeTooHigh && <span className="form-error">Fee tidak boleh melebihi harga paket.</span>}
+          <span className="form-hint">
+            Untuk staff yang menangani paket ini, dibagi rata bila lebih dari satu orang. Bisa diubah di Kasir saat
+            bayar (maksimal harga paket). Terkumpul per bulan dan dibayar bersama gaji awal bulan berikutnya.
+          </span>
         </div>
         <div className="form-group">
           <span className="form-label">Warna di Timeline</span>

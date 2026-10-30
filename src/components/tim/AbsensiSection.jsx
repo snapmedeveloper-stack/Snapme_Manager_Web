@@ -2,18 +2,30 @@ import { useState } from 'react';
 import { CalendarCheck, ChartColumn } from 'lucide-react';
 import { Card, useConfirm, useToast } from '../ui';
 import { writeInBackground } from '../../utils/firestoreWrite';
-import { formatMonth, scheduledOn } from '../../utils/attendance';
+import { formatMonth, recordRange, scheduledOn } from '../../utils/attendance';
 import { addRecord, deleteRecord, restoreRecord, updateRecord } from './timData';
 import AttendanceCalendar from './AttendanceCalendar';
 import AttendanceRecap from './AttendanceRecap';
 import DaySheet from './DaySheet';
+import OpeningHoursCard from './OpeningHoursCard';
 import RecordForm from './RecordForm';
 
 /**
- * Absensi versi owner: kalender kerja, rekap performa, dan koreksi catatan di tanggal mana pun (Snapme Desktop hanya
- * hari ini & kemarin). Catatan yang dihapus tetap terlihat di rincian tanggal dan bisa dipulihkan.
+ * Absensi versi owner: kalender kerja, rekap (buka terlambat & lembur dari jam buka cabang), jam buka & tutup, dan
+ * koreksi catatan di tanggal mana pun (Snapme Desktop hanya hari ini & kemarin). Catatan yang dihapus tetap terlihat
+ * di rincian tanggal dan bisa dipulihkan.
  */
-export default function AbsensiSection({ orgId, user, managerId, month, onMonthChange, today, data, toleranceMin }) {
+export default function AbsensiSection({
+  orgId,
+  user,
+  managerId,
+  month,
+  onMonthChange,
+  today,
+  data,
+  openingHours,
+  toleranceMin,
+}) {
   const toast = useToast();
   const confirm = useConfirm();
   const { staff, versions, records } = data;
@@ -36,7 +48,7 @@ export default function AbsensiSection({ orgId, user, managerId, month, onMonthC
   const handleDelete = async (record) => {
     const ok = await confirm({
       title: 'Hapus catatan kerja?',
-      message: `${record.staffName || 'Catatan'} ${record.start}–${record.end}. Catatan masih bisa dipulihkan dari rincian tanggal ini.`,
+      message: `${record.staffName || 'Catatan'} ${recordRange(record)}. Catatan masih bisa dipulihkan dari rincian tanggal ini.`,
       confirmText: 'Hapus',
       destructive: true,
     });
@@ -52,13 +64,14 @@ export default function AbsensiSection({ orgId, user, managerId, month, onMonthC
             Kalender kerja
           </>
         }
-        description="Ketuk tanggal untuk melihat siapa yang terjadwal dan siapa yang bekerja."
+        description="Ketuk tanggal untuk melihat siapa yang bekerja, buka terlambat, dan lembur."
       >
         <AttendanceCalendar
           month={month}
           onMonthChange={onMonthChange}
           today={today}
-          versions={versions}
+          staff={staff}
+          openingHours={openingHours}
           records={records}
           toleranceMin={toleranceMin}
           onSelectDate={setSelectedDate}
@@ -72,25 +85,26 @@ export default function AbsensiSection({ orgId, user, managerId, month, onMonthC
             Rekap {formatMonth(month)}
           </>
         }
-        description={`Dinilai sampai hari ini. Terlambat/pulang cepat dihitung bila lebih dari ${toleranceMin} menit.`}
+        description={`Dinilai dari jam buka cabang: buka terlambat dan lembur dihitung bila lebih dari ${toleranceMin} menit.`}
       >
         <AttendanceRecap
           month={month}
-          today={today}
           staff={staff}
-          versions={versions}
+          openingHours={openingHours}
           records={records}
           toleranceMin={toleranceMin}
         />
       </Card>
 
+      <OpeningHoursCard orgId={orgId} managerId={managerId} hours={openingHours} />
+
       {selectedDate && !form && (
         <DaySheet
           date={selectedDate}
-          today={today}
           versions={versions}
           records={records}
           staff={staff}
+          openingHours={openingHours}
           toleranceMin={toleranceMin}
           editable
           onAdd={() => setForm({ record: null })}

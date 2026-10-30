@@ -179,6 +179,9 @@ export default function JadwalSection({ orgId, user, managerId, today, data, onA
   const nextVersion = versions
     .filter((v) => v.effectiveFrom > effectiveFrom)
     .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))[0];
+  // Minggu depan tanpa versi sendiri otomatis memakai jadwal yang berlaku sekarang (scheduleVersionOn mengambil versi
+  // terakhir yang sudah mulai). Tidak ada yang disalin ke database; Desktop membaca jadwal dengan aturan yang sama.
+  const nextWeekFollowsCurrent = when === 'next' && !!base && base.effectiveFrom < effectiveFrom;
 
   if (!staff.some((s) => s.active !== false)) {
     return (
@@ -207,8 +210,8 @@ export default function JadwalSection({ orgId, user, managerId, today, data, onA
       }
       description={
         current
-          ? `Jadwal yang berlaku sekarang dimulai ${formatDay(current.effectiveFrom)}. Jadwal berulang setiap minggu.`
-          : 'Belum ada jadwal. Jadwal berulang setiap minggu.'
+          ? `Acuan siapa yang jaga, berulang setiap minggu (tidak dipakai menilai absensi). Berlaku sejak ${formatDay(current.effectiveFrom)}.`
+          : 'Belum ada jadwal. Jadwal adalah acuan siapa yang jaga, berulang setiap minggu (tidak dipakai menilai absensi).'
       }
     >
       <div className="tim-sched-when">
@@ -225,6 +228,12 @@ export default function JadwalSection({ orgId, user, managerId, today, data, onA
           Berlaku mulai {formatDay(effectiveFrom)}.
           {when === 'this' && ' Hari yang sudah lewat di minggu ini ikut dinilai dengan jadwal baru.'}
         </span>
+        {nextWeekFollowsCurrent && (
+          <p className="tim-sched-carry" role="note">
+            Minggu depan belum diatur, jadi otomatis memakai jadwal minggu ini (yang berlaku sejak{' '}
+            {formatDay(base.effectiveFrom)}). Simpan hanya bila jadwal minggu depan ingin diubah.
+          </p>
+        )}
       </div>
       <ScheduleEditor
         key={`${effectiveFrom}|${base?.id || 'baru'}|${base?.updatedAt?.seconds || ''}`}

@@ -1,23 +1,38 @@
 // Salinan Snapme_Desktop/src/components/absensi/DayDetail.jsx: ubah keduanya bersamaan.
 import { Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { Badge, Button, EmptyState } from '../ui';
-import { activeRecords, dayRows, formatDuration, STATUS_INFO } from '../../utils/attendance';
+import {
+  activeRecords,
+  dayRows,
+  formatDuration,
+  formatElapsed,
+  hoursOn,
+  recordRange,
+  STATUS_INFO,
+} from '../../utils/attendance';
+
+/** Keterangan jam buka tanggal itu (dasar penilaian buka terlambat & lembur). */
+function hoursNote(hours) {
+  if (!hours) return 'Jam buka belum diatur: buka terlambat dan lembur tidak dinilai.';
+  if (hours.closed) return 'Hari tutup: tidak ada penilaian buka terlambat dan lembur.';
+  return `Jam buka ${hours.open}–${hours.close}.`;
+}
 
 /** Nama staff dari daftar, atau nama yang tersalin di catatan bila staff-nya sudah tidak ada. */
 const nameOf = (staffById, staffId, records) =>
   staffById.get(staffId)?.name || records.find((r) => r.staffName)?.staffName || 'Staff tidak dikenal';
 
 /**
- * Rincian satu tanggal: siapa yang terjadwal, siapa yang mencatat kerja, dan statusnya.
- * editable: boleh mengubah/menghapus catatan di tanggal ini. onRestore diisi hanya untuk owner (Snapme Manager):
- * catatan yang dihapus ikut tampil supaya bisa dipulihkan.
+ * Rincian satu tanggal: siapa yang mencatat kerja (dengan buka terlambat & lembur dari jam buka cabang), lalu siapa yang
+ * terjadwal tanpa catatan (info saja). editable: boleh mengubah/menghapus catatan di tanggal ini. onRestore diisi hanya
+ * untuk owner (Snapme Manager): catatan yang dihapus ikut tampil supaya bisa dipulihkan.
  */
 export default function DayDetail({
   date,
-  today,
   versions,
   records,
   staff,
+  openingHours,
   toleranceMin,
   editable,
   readOnlyNote,
@@ -31,7 +46,7 @@ export default function DayDetail({
     versions,
     records: activeRecords(ofDate),
     dateStr: date,
-    today,
+    openingHours,
     toleranceMin,
   });
   const deleted = onRestore ? ofDate.filter((r) => r.deletedAt) : [];
@@ -39,28 +54,27 @@ export default function DayDetail({
   return (
     <div className="abs-day">
       {!editable && readOnlyNote && <p className="form-hint abs-day-note">{readOnlyNote}</p>}
+      <p className="form-hint abs-day-note num">{hoursNote(hoursOn(openingHours, date))}</p>
       {rows.length === 0 ? (
-        <EmptyState
-          title="Tidak ada jadwal"
-          description="Belum ada yang terjadwal atau mencatat kerja di tanggal ini."
-        />
+        <EmptyState title="Belum ada catatan" description="Belum ada yang mencatat kerja di tanggal ini." />
       ) : (
         <ul className="abs-day-list">
           {rows.map((row) => {
             const info = STATUS_INFO[row.status];
+            // Jadwal hanya keterangan siapa yang semestinya jaga, tidak ikut penilaian
+            const meta = [
+              row.isOpener && 'Membuka studio',
+              row.minutes > 0 && formatDuration(row.minutes),
+              row.shift && `Jadwal ${row.shift.start}–${row.shift.end}`,
+            ].filter(Boolean);
             return (
               <li key={row.staffId} className="abs-day-row">
                 <div className="abs-day-main">
                   <span className="abs-day-name">{nameOf(staffById, row.staffId, row.records)}</span>
-                  <span className="abs-day-meta num">
-                    {row.shift ? `Jadwal ${row.shift.start}–${row.shift.end}` : 'Tanpa jadwal'}
-                    {row.minutes > 0 && ` · ${formatDuration(row.minutes)}`}
-                  </span>
+                  {meta.length > 0 && <span className="abs-day-meta num">{meta.join(' · ')}</span>}
                   {row.records.map((r) => (
                     <div key={r.id} className="abs-day-record">
-                      <span className="num">
-                        {r.start}–{r.end}
-                      </span>
+                      <span className="num">{recordRange(r)}</span>
                       {r.createdOn?.machineName && <span className="abs-day-trail">{r.createdOn.machineName}</span>}
                       {editable && (
                         <span className="abs-day-actions">
@@ -69,7 +83,7 @@ export default function DayDetail({
                             size="sm"
                             iconOnly
                             icon={Pencil}
-                            aria-label={`Ubah catatan ${r.start}–${r.end}`}
+                            aria-label={`Ubah catatan ${recordRange(r)}`}
                             onClick={() => onEdit(r)}
                           />
                           <Button
@@ -77,7 +91,7 @@ export default function DayDetail({
                             size="sm"
                             iconOnly
                             icon={Trash2}
-                            aria-label={`Hapus catatan ${r.start}–${r.end}`}
+                            aria-label={`Hapus catatan ${recordRange(r)}`}
                             onClick={() => onDelete(r)}
                           />
                         </span>
@@ -85,10 +99,11 @@ export default function DayDetail({
                     </div>
                   ))}
                 </div>
-                <Badge tone={info.tone}>
-                  {info.label}
-                  {row.lateMin > 0 && ` ${row.lateMin}m`}
-                </Badge>
+                <span className="abs-day-badges">
+                  <Badge tone={info.tone}>{info.label}</Badge>
+                  {row.lateOpenMin > 0 && <Badge tone="warning">Buka terlambat {formatElapsed(row.lateOpenMin)}</Badge>}
+                  {row.overtimeMin > 0 && <Badge tone="accent">Lembur {formatElapsed(row.overtimeMin)}</Badge>}
+                </span>
               </li>
             );
           })}
@@ -101,9 +116,7 @@ export default function DayDetail({
           {deleted.map((r) => (
             <div key={r.id} className="abs-day-record is-deleted">
               <span>{nameOf(staffById, r.staffId, [r])}</span>
-              <span className="num">
-                {r.start}–{r.end}
-              </span>
+              <span className="num">{recordRange(r)}</span>
               {r.updatedOn?.machineName && <span className="abs-day-trail">dihapus di {r.updatedOn.machineName}</span>}
               <Button variant="ghost" size="sm" icon={RotateCcw} onClick={() => onRestore(r)}>
                 Pulihkan

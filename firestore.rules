@@ -199,6 +199,18 @@ service cloud.firestore {
         allow delete: if isOwner(orgId) || isAdmin();
       }
 
+      // Gaji: tarif per cabang per bulan (harga per jam, uang makan), bonus staff per bulan, dan tanda gaji bulanan sudah
+      // dibayar. Hanya owner; Desktop tidak boleh membaca.
+      match /payrollSettings/{id} {
+        allow read, write: if isOwner(orgId) || isAdmin();
+      }
+      match /payrollBonuses/{id} {
+        allow read, write: if isOwner(orgId) || isAdmin();
+      }
+      match /payrolls/{id} {
+        allow read, write: if isOwner(orgId) || isAdmin();
+      }
+
       // Sisa sistem role: dibaca Desktop selama transisi (operator lama masuk lingkup cabang), dihapus di tahap 5.
       match /members/{id} {
         allow read: if isMember(orgId) || isAdmin();

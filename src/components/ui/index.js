@@ -7,6 +7,7 @@ export { default as Card } from './Card';
 export { default as ColorPicker } from './ColorPicker';
 export { default as EmptyState } from './EmptyState';
 export { default as Modal } from './Modal';
+export { default as MoneyInput } from './MoneyInput';
 export { default as Select } from './Select';
 export { default as SortableList } from './SortableList';
 export { default as Spinner } from './Spinner';

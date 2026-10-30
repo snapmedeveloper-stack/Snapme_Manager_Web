@@ -48,6 +48,7 @@ export default function PackageTab({ packages, places, canEdit, orgId, ownerId }
                 </span>
                 <span className="lyn-row-meta num">
                   {pkg.duration || 30} menit · {pkg.price ? formatRupiah(pkg.price) : 'Harga belum diisi'}
+                  {pkg.handlerFee > 0 && ` · Fee ${formatRupiah(pkg.handlerFee)}`}
                 </span>
                 <LocationBadges item={pkg} places={places} />
               </div>

@@ -104,6 +104,38 @@
 .abs-cal-legend > span { display: inline-flex; align-items: center; gap: var(--space-1); }
 .abs-cal-legend-text { color: var(--text-muted); }
 
+/* Isi sel kalender: siapa yang bekerja + jamnya. Sel sempit (HP) = inisial + jam bulat, sel lebar = nama depan + jam
+   per setengah jam (container query pada sel). */
+.abs-cal-cell { container-type: inline-size; }
+.abs-cal-cell.is-dim { opacity: 0.5; }
+.abs-cal-people { display: flex; flex-direction: column; align-self: stretch; gap: 1px; min-width: 0; }
+.abs-cal-person {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.abs-cal-person.is-on { background: var(--accent-subtle); color: var(--accent-primary); font-weight: var(--fw-semibold); }
+.abs-cal-person-hours { font-weight: var(--fw-semibold); color: var(--text-primary); }
+.abs-cal-person.is-on .abs-cal-person-hours { color: inherit; }
+.abs-cal-person-long { display: none; }
+.abs-cal-more { font-size: var(--fs-xs); color: var(--text-muted); text-align: center; }
+@container (min-width: 64px) {
+  .abs-cal-person-short { display: none; }
+  .abs-cal-person-long { display: inline; overflow: hidden; text-overflow: ellipsis; }
+}
+.abs-cal-focus { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.abs-cal-focus-total { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--accent-primary); }
+
 /* ----- Rincian tanggal ----- */
 .abs-day-note { margin-bottom: var(--space-3); }
 .abs-day-list { display: flex; flex-direction: column; list-style: none; }
@@ -161,6 +193,14 @@
 
 /* ----- Jadwal mingguan ----- */
 .tim-sched-when { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+/* Minggu depan belum diatur: memakai jadwal minggu ini */
+.tim-sched-carry {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
+  color: var(--accent-primary);
+  font-size: var(--fs-sm);
+}
 .tim-sched { display: flex; flex-direction: column; gap: var(--space-3); }
 .tim-sched-day {
   display: flex;
@@ -204,3 +244,101 @@
   padding: var(--space-3) 0;
   background: var(--bg-card);
 }
+
+/* ----- Gaji ----- */
+.tim-month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.tim-month-label { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.tim-pay-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.tim-pay-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+}
+.tim-pay-summary dt { font-size: var(--fs-xs); color: var(--text-secondary); }
+.tim-pay-summary dd { overflow: hidden; font-weight: var(--fw-semibold); color: var(--text-primary); text-overflow: ellipsis; }
+.tim-pay-muted { margin-bottom: var(--space-3); font-size: var(--fs-sm); color: var(--text-muted); }
+.tim-pay-row { width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.tim-pay-row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+@media (hover: hover) {
+  .tim-pay-row:hover { background: var(--bg-hover); }
+}
+.tim-pay-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-right: var(--space-1); }
+.tim-pay-amount { font-weight: var(--fw-semibold); color: var(--text-primary); white-space: nowrap; }
+.tim-pay-line { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); font-weight: var(--fw-medium); }
+.tim-pay-line .tim-pay-muted { margin: 0; font-weight: var(--fw-regular); }
+.tim-pay-line.is-total { padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); font-size: var(--fs-md); font-weight: var(--fw-semibold); }
+.tim-pay-fees { display: flex; flex-direction: column; gap: var(--space-2); }
+.tim-pay-list { display: flex; flex-direction: column; list-style: none; }
+.tim-pay-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tim-pay-item:last-child { border-bottom: 0; }
+.tim-pay-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--text-secondary); }
+.tim-pay-warning {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--warning-subtle);
+  color: var(--warning);
+  font-size: var(--fs-sm);
+}
+.tim-pay-warning > svg { flex-shrink: 0; margin-top: 2px; }
+.tim-pay-tx { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--text-secondary); }
+.tim-pay-tx > strong { font-size: var(--fs-base); color: var(--text-primary); }
+.tim-pay-pick { display: flex; flex-direction: column; gap: var(--space-3); list-style: none; }
+
+/* ----- Jam buka & tutup (components/tim/OpeningHoursCard) ----- */
+.tim-hours-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-2); }
+.tim-hours-summary > div { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-base); font-size: var(--fs-sm); }
+.tim-hours-summary dt { color: var(--text-secondary); }
+.tim-hours-summary dd { font-weight: var(--fw-semibold); color: var(--text-primary); }
+.tim-hours-summary .is-closed dd { color: var(--text-muted); }
+.tim-hours { display: flex; flex-direction: column; list-style: none; }
+.tim-hours-row {
+  display: grid;
+  grid-template-columns: 64px auto minmax(0, 1fr);
+  grid-template-areas: 'day switch times' 'error error error';
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tim-hours-row:last-child { border-bottom: 0; }
+.tim-hours-day { grid-area: day; font-weight: var(--fw-medium); color: var(--text-primary); }
+.tim-hours-row > .switch { grid-area: switch; }
+.tim-hours-row > .tim-sched-times, .tim-hours-closed { grid-area: times; }
+.tim-hours-closed { font-size: var(--fs-sm); color: var(--text-muted); }
+.tim-hours-error { grid-area: error; }
+
+/* Rincian tanggal: status + buka terlambat + lembur */
+.abs-day-badges { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+/* Gaji: tarif berlaku, total, dan form pengaturan */
+.tim-pay-rate { margin-bottom: var(--space-3); font-size: var(--fs-sm); color: var(--text-secondary); }
+.tim-pay-rate .tim-pay-muted { margin: 0; }
+.tim-pay-summary > div.is-total { background: var(--accent-subtle); }
+.tim-pay-summary > div.is-total dd { color: var(--accent-primary); }
+.tim-pay-settings { display: flex; flex-direction: column; gap: var(--space-3); }
+.tim-pay-settings + .tim-pay-settings { padding-top: var(--space-4); border-top: 1px solid var(--border-subtle); }
+.tim-pay-settings-title { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.tim-pay-settings > .form-hint { margin-top: calc(var(--space-2) * -1); }
+.tim-pay-rates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.tim-pay-warning:not(:last-child) { margin-bottom: var(--space-3); }
+@media (min-width: 640px) {
+  .tim-pay-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.tim-pay-bonus-total { display: inline-flex; align-items: center; gap: var(--space-2); }
+.tim-switch-row .form-hint { font-weight: var(--fw-regular); }

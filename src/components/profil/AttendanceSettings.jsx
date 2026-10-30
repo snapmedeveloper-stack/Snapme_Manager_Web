@@ -6,7 +6,7 @@ import { writeInBackground } from '../../utils/firestoreWrite';
 import { attendanceSettingsRef } from '../tim/timData';
 import { useAttendanceSettings } from '../tim/useTimData';
 
-/** Toleransi terlambat / pulang cepat (menit) untuk rekap absensi, berlaku untuk semua cabang. */
+/** Toleransi (menit) buka terlambat & lembur di rekap absensi, berlaku untuk semua cabang. Jam buka diatur di Tim. */
 export default function AttendanceSettings({ orgId }) {
   const formId = useId();
   const toast = useToast();
@@ -42,7 +42,7 @@ export default function AttendanceSettings({ orgId }) {
     >
       <form id={formId} className="form-stack" onSubmit={handleSave}>
         <div className="form-group">
-          <label htmlFor={`${formId}-tolerance`}>Toleransi terlambat (menit)</label>
+          <label htmlFor={`${formId}-tolerance`}>Toleransi buka terlambat &amp; lembur (menit)</label>
           <input
             id={`${formId}-tolerance`}
             className={`input num${valid ? '' : ' is-error'}`}
@@ -55,7 +55,7 @@ export default function AttendanceSettings({ orgId }) {
           />
           <span className={valid ? 'form-hint' : 'form-error'}>
             {valid
-              ? 'Mulai kerja lebih lambat (atau selesai lebih cepat) dari jadwal melebihi batas ini dihitung terlambat (atau pulang cepat).'
+              ? 'Jaga pertama yang dimulai lewat jam buka, atau kerja yang selesai lewat jam tutup, lebih dari batas ini dihitung buka terlambat atau lembur. Jam buka & tutup diatur di Tim → Absensi.'
               : 'Isi angka 0 sampai 120.'}
           </span>
         </div>

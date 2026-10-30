@@ -64,6 +64,7 @@ Import dari `../components/ui`. API-nya sama dengan Desktop.
 | `Select` | Dropdown (`onChange(nilai)`) |
 | `Switch` | Saklar on/off |
 | `TimeInput` | Isian jam 24 jam "HH:MM" (`value`, `onChange(nilai)`, keyboard angka di HP). Jangan pakai `<input type="time">`, yang tampil AM/PM bila bahasa HP bukan Indonesia |
+| `MoneyInput` | Isian rupiah: tampil "Rp 15.000" saat diketik, `value`/`onChange(nilai)` hanya digit ("15000"), keyboard angka di HP. Dipakai di form Gaji |
 | `SortableList` | Daftar yang urutannya diubah (`items`, `renderItem`, `onReorder`). API sama dengan Desktop, tetapi menyeret memakai pointer event pada pegangan, sehingga jalan di layar sentuh (Desktop memakai HTML5 drag & drop). Panah atas/bawah pada pegangan juga bisa |
 | `ColorPicker` | 8 warna kategori paket (`--cat-*`) |
 | `Modal` | Semua dialog. Di layar ≤640px otomatis jadi **bottom sheet**, dengan tombol footer selebar layar |
