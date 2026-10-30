@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { CircleAlert, FileDown, Receipt, Trash2 } from 'lucide-react';
+import { CircleAlert, FileDown, Receipt, Search, Trash2, X } from 'lucide-react';
 import { db } from '../firebase';
-import { Button, EmptyState, Spinner, Tabs, useConfirm, useToast } from '../components/ui';
+import { Button, EmptyState, Select, Spinner, Tabs, useConfirm, useToast } from '../components/ui';
 import AppBar from '../components/layout/AppBar';
 import TransactionSummary from '../components/transaksi/TransactionSummary';
 import TransactionCard from '../components/transaksi/TransactionCard';
@@ -10,6 +10,7 @@ import BusyChart from '../components/transaksi/BusyChart';
 import { PERIODS, periodLabel, periodRange } from '../components/transaksi/periods';
 import { printReceipt } from '../components/transaksi/printReceipt';
 import { shareReport } from '../components/transaksi/shareReport';
+import { matchesSearch, packageOptions, packageQtyOf } from '../components/transaksi/transactionFilter';
 import { useTransaksiCatalog, useTransactions } from '../hooks/useTransaksiData';
 import { summarizeTransactions } from '../utils/transactions';
 import './Transaksi.css';
@@ -28,7 +29,7 @@ const SINGLE_DAY = ['today', 'yesterday', 'day_before'];
 /**
  * Transaksi: rekap & daftar transaksi per periode. Data, rekap, dan tahap booking sama dengan Snapme_Desktop
  * (hooks/useTransaksiData, utils/transactions). Tambahan Manager: periode lebih lengkap, grafik waktu sibuk,
- * dan laporan PDF (Cloud Function).
+ * laporan PDF (Cloud Function), serta pencarian & filter paket (ikut menyaring rekap, seperti filter jenis layanan).
  */
 export default function Transaksi({ user, orgId, userMeta }) {
   const toast = useToast();
@@ -37,6 +38,8 @@ export default function Transaksi({ user, orgId, userMeta }) {
   const [custom, setCustom] = useState({ from: '', to: '' });
   const [kind, setKind] = useState('Semua');
   const [view, setView] = useState('active');
+  const [search, setSearch] = useState('');
+  const [packageId, setPackageId] = useState(''); // '' = semua paket
   const [expandedId, setExpandedId] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
 
@@ -51,13 +54,22 @@ export default function Transaksi({ user, orgId, userMeta }) {
     },
     [bookings, photobooths],
   );
-  const matchesKind = useCallback((tx) => kind === 'Semua' || (kind === 'Photobooth') === isPhotobooth(tx), [kind, isPhotobooth]);
+  // Jenis layanan, paket, dan kata kunci menyaring daftar sekaligus rekap
+  const matchesFilters = useCallback(
+    (tx) =>
+      (kind === 'Semua' || (kind === 'Photobooth') === isPhotobooth(tx)) &&
+      (!packageId || packageQtyOf(tx, packageId) > 0) &&
+      matchesSearch(tx, search),
+    [kind, isPhotobooth, packageId, search],
+  );
+  const filtering = !!packageId || !!search.trim();
 
   // Rekap hanya menghitung transaksi aktif (yang di sampah diabaikan)
-  const active = useMemo(() => transactions.filter((tx) => !tx.isDeleted && matchesKind(tx)), [transactions, matchesKind]);
+  const active = useMemo(() => transactions.filter((tx) => !tx.isDeleted && matchesFilters(tx)), [transactions, matchesFilters]);
   const summary = useMemo(() => summarizeTransactions(active, { packages, addOns, templates }), [active, packages, addOns, templates]);
   const inTrash = view === 'trash';
-  const visible = transactions.filter((tx) => inTrash === !!tx.isDeleted && matchesKind(tx));
+  const visible = transactions.filter((tx) => inTrash === !!tx.isDeleted && matchesFilters(tx));
+  const packageSold = packageId ? visible.reduce((sum, tx) => sum + packageQtyOf(tx, packageId), 0) : 0;
 
   const isSingleDay = SINGLE_DAY.includes(period) || (period === 'custom' && (!custom.to || custom.to === custom.from));
   const busyMode = isSingleDay ? 'hour' : period === 'all' ? 'month' : 'day';
@@ -156,6 +168,30 @@ export default function Transaksi({ user, orgId, userMeta }) {
           <Tabs options={KINDS} value={kind} onChange={setKind} ariaLabel="Jenis layanan" />
           <Tabs options={VIEWS} value={view} onChange={setView} ariaLabel="Tampilan" />
         </div>
+        <div className="trx-search-row">
+          <div className="trx-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              className="input"
+              placeholder="Cari customer, no. transaksi, item, staff…"
+              aria-label="Cari transaksi"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Hapus pencarian" onClick={() => setSearch('')} />
+            )}
+          </div>
+          <Select value={packageId} onChange={setPackageId} aria-label="Filter paket" className="trx-package">
+            <option value="">Semua paket</option>
+            {packageOptions(packages).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.archived ? `${p.name} (diarsipkan)` : p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       <div className="page-body">
@@ -176,16 +212,20 @@ export default function Transaksi({ user, orgId, userMeta }) {
 
             <div className="trx-list-head">
               <h2 className="trx-list-title">{inTrash ? 'Transaksi di sampah' : 'Daftar transaksi'}</h2>
-              <span className="trx-list-count num">{visible.length} transaksi</span>
+              <span className="trx-list-count num">
+                {visible.length} transaksi{packageId && ` · ${packageSold} paket`}
+              </span>
             </div>
             {visible.length === 0 ? (
               <EmptyState
-                icon={inTrash ? Trash2 : Receipt}
-                title={inTrash ? 'Sampah kosong' : 'Belum ada transaksi'}
+                icon={filtering ? Search : inTrash ? Trash2 : Receipt}
+                title={filtering ? 'Tidak ada yang cocok' : inTrash ? 'Sampah kosong' : 'Belum ada transaksi'}
                 description={
-                  inTrash
-                    ? 'Transaksi yang dihapus pada periode ini akan muncul di sini.'
-                    : 'Ubah periode atau jenis layanan untuk melihat transaksi lain.'
+                  filtering
+                    ? 'Ubah kata kunci, paket, atau periode (mis. pilih periode yang lebih panjang).'
+                    : inTrash
+                      ? 'Transaksi yang dihapus pada periode ini akan muncul di sini.'
+                      : 'Ubah periode atau jenis layanan untuk melihat transaksi lain.'
                 }
               />
             ) : (

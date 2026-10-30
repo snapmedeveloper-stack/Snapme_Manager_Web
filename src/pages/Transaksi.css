@@ -16,6 +16,14 @@
 .trx-custom .input { flex: 1; min-width: 0; }
 .trx-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .trx-filters .tabs:first-child { flex: 1; }
+/* Cari & filter paket */
+.trx-search-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.trx-search { position: relative; display: flex; flex: 1 1 220px; align-items: center; min-width: 0; }
+.trx-search > svg { position: absolute; left: var(--space-3); color: var(--text-muted); pointer-events: none; }
+.trx-search > .input { flex: 1; min-width: 0; padding-left: calc(var(--space-3) + 16px + var(--space-2)); padding-right: var(--control-h-sm); }
+.trx-search > .btn { position: absolute; right: var(--space-1); }
+.trx-search > .input::-webkit-search-cancel-button { display: none; }
+.trx-package { flex: 1 1 160px; min-width: 0; }
 
 /* ----- Ringkasan (sama dengan Desktop) ----- */
 .trx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }

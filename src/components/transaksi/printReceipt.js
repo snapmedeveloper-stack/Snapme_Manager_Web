@@ -2,10 +2,8 @@
 
 import { formatRupiah } from '../../utils/format';
 import { buildReceiptData, formatReceiptDate, kasirNameOf } from '../../utils/receipt';
+import { escapeHtml, openPrintWindow } from '../../utils/printWindow';
 import { PAYMENT_LABEL } from '../../utils/transactions';
-
-const escapeHtml = (value) =>
-  String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const row = (label, value, bold = false) =>
   `<div class="row${bold ? ' bold' : ''}"><span>${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></div>`;
@@ -55,13 +53,7 @@ export function printReceipt(tx, { user, userMeta, kasirSettings }) {
   ${row('Kembali', formatRupiah(data.change))}
   <div class="divider"></div>
   <div class="center">${escapeHtml(settings.footerNote)}</div>
-  <script>window.onload = function () { window.print(); setTimeout(function () { window.close(); }, 500); };</script>
 </body></html>`;
 
-  const win = window.open('', '_blank', 'width=400,height=600');
-  if (!win) return false;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  return true;
+  return openPrintWindow(html);
 }

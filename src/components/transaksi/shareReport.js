@@ -1,4 +1,5 @@
 // Laporan PDF transaksi: dibuat Cloud Function generateReport (functions/index.js), lalu dibagikan atau diunduh.
+import { shareOrDownload } from '../../utils/download';
 
 const FUNCTION_URL = 'https://asia-southeast2-snapme-database.cloudfunctions.net/generateReport';
 
@@ -7,15 +8,6 @@ const base64ToBlob = (base64) => {
   const array = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i += 1) array[i] = bytes.charCodeAt(i);
   return new Blob([array], { type: 'application/pdf' });
-};
-
-const download = (url, filename) => {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
 };
 
 /**
@@ -42,20 +34,8 @@ export async function shareReport({ user, orgId, range, filterTab, label }) {
   const result = await response.json();
   if (!result.pdfBase64) throw new Error('Tidak ada data PDF dari server.');
 
-  const blob = base64ToBlob(result.pdfBase64);
-  const filename = result.filename || 'Laporan_Snapme.pdf';
-  const url = URL.createObjectURL(blob);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-  const file = new File([blob], filename, { type: 'application/pdf' });
-
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Laporan Snapme', text: `Laporan periode ${label}` });
-    } catch (err) {
-      if (err.name === 'NotAllowedError') download(url, filename);
-      // AbortError = dibatalkan user dari menu bagikan
-    }
-    return;
-  }
-  download(url, filename);
+  await shareOrDownload(base64ToBlob(result.pdfBase64), result.filename || 'Laporan_Snapme.pdf', {
+    title: 'Laporan Snapme',
+    text: `Laporan periode ${label}`,
+  });
 }
