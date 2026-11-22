@@ -20,6 +20,7 @@ const Transaksi = lazy(() => import('./pages/Transaksi'));
 const Layanan = lazy(() => import('./pages/Layanan'));
 const Tim = lazy(() => import('./pages/Tim'));
 const Profil = lazy(() => import('./pages/Profil'));
+const Log = lazy(() => import('./pages/Log'));
 
 const VIEW_MANAGER_KEY = 'snapme.owner.viewManager';
 const readViewManager = () => {
@@ -186,29 +187,49 @@ function App() {
   const branchProps = { branches, onViewManagerChange: changeViewManager };
   const canManage = canManageStaff(role);
 
+  const pageFallback = (
+    <div className="page-loading">
+      <Spinner size="lg" />
+    </div>
+  );
+
   return (
     <Router>
-      <AppShell canManage={canManage}>
-        <Suspense
-          fallback={
-            <div className="page-loading">
-              <Spinner size="lg" />
-            </div>
+      <Routes>
+        {/* Mode Log: kerangka & navbar sendiri (bukan AppShell), khusus owner */}
+        {canManage && (
+          <Route
+            path="/log/*"
+            element={
+              <Suspense fallback={pageFallback}>
+                <Log orgId={orgId} user={user} managerId={viewManagerId} {...branchProps} />
+              </Suspense>
+            }
+          />
+        )}
+        <Route
+          path="*"
+          element={
+            <AppShell canManage={canManage} orgId={orgId}>
+              <Suspense fallback={pageFallback}>
+                <Routes>
+                  <Route path="/timeline" element={<Timeline {...session} />} />
+                  <Route path="/transaksi" element={<Transaksi {...session} />} />
+                  {canManage && <Route path="/layanan" element={<Layanan {...session} />} />}
+                  {canManage && <Route path="/tim" element={<Tim {...session} {...branchProps} studio={studio} />} />}
+                  <Route
+                    path="/profil"
+                    element={
+                      <Profil {...session} {...branchProps} viewManagerId={viewManagerId} onLogout={handleLogout} />
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/timeline" replace />} />
+                </Routes>
+              </Suspense>
+            </AppShell>
           }
-        >
-          <Routes>
-            <Route path="/timeline" element={<Timeline {...session} />} />
-            <Route path="/transaksi" element={<Transaksi {...session} />} />
-            {canManage && <Route path="/layanan" element={<Layanan {...session} />} />}
-            {canManage && <Route path="/tim" element={<Tim {...session} {...branchProps} studio={studio} />} />}
-            <Route
-              path="/profil"
-              element={<Profil {...session} {...branchProps} viewManagerId={viewManagerId} onLogout={handleLogout} />}
-            />
-            <Route path="*" element={<Navigate to="/timeline" replace />} />
-          </Routes>
-        </Suspense>
-      </AppShell>
+        />
+      </Routes>
     </Router>
   );
 }

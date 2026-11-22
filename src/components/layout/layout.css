@@ -54,6 +54,22 @@
 }
 .bottom-nav-item.is-active { color: var(--accent-primary); }
 .bottom-nav-item.is-active .bottom-nav-icon { background: var(--accent-subtle); }
+.bottom-nav-icon { position: relative; }
+/* Tanda jumlah (mis. error baru di menu Profil) */
+.nav-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--danger);
+  color: var(--bg-surface);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 18px;
+  text-align: center;
+}
+.bottom-nav-icon .nav-badge { position: absolute; top: -2px; right: 6px; }
+.side-rail-item .nav-badge { margin-left: auto; }
 
 /* ----- Rail samping (layar lebar) ----- */
 .side-rail { display: none; }

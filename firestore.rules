@@ -60,6 +60,59 @@ service cloud.firestore {
       return r.staffId is string && r.start is string && r.end is string && nearToday(r.date);
     }
 
+    // Satu catatan log aplikasi dari Desktop (bentuk dibuat electron/appLogger.js + pengirim renderer). Rules ikut
+    // memvalidasi setiap laporan: field & tipe tetap, id = {machineId}_{seq}, kategori = awalan event, hasil operasi
+    // wajib opId, waktu masuk akal, aktivitas kedaluwarsa 30 hari (TTL) sedangkan error disimpan terus.
+    function validAppLog(logId, d) {
+      return d.keys().hasAll(['type', 'level', 'category', 'event', 'status', 'opId', 'message', 'context', 'subject',
+          'source', 'count', 'seq', 'machineId', 'machineName', 'appVersion', 'managerId', 'studioEmail', 'occurredAt',
+          'firstAt', 'lastAt', 'createdAt'])
+        && d.keys().hasOnly(['type', 'level', 'category', 'event', 'status', 'opId', 'message', 'context', 'subject',
+          'source', 'count', 'seq', 'machineId', 'machineName', 'appVersion', 'managerId', 'studioEmail', 'occurredAt',
+          'firstAt', 'lastAt', 'createdAt', 'fingerprint', 'expireAt'])
+        && d.type in ['activity', 'error']
+        && d.level in ['info', 'warn', 'error']
+        && d.source in ['user', 'bot', 'auto']
+        && d.event is string && d.event.size() <= 64 && d.event.matches('^[a-z]+[.][a-z_]+$')
+        && d.category == d.event.split('[.]')[0]
+        && d.message is string && d.message.size() > 0 && d.message.size() <= 500
+        && d.context is map
+        && (d.subject == null || (d.subject is map && d.subject.keys().hasOnly(['kind', 'id', 'name'])
+          && d.subject.kind in ['booking', 'transaction', 'template', 'chat', 'staff', 'attendance', 'device', 'file']
+          && d.subject.id is string && d.subject.id.size() > 0 && d.subject.id.size() <= 64))
+        && ((d.status == null && d.opId == null)
+          || (d.status in ['started', 'succeeded', 'failed', 'partial', 'unconfirmed']
+            && d.opId is string && d.opId.size() > 0 && d.opId.size() <= 64))
+        && d.count is int && d.count >= 1 && d.count <= 1000000
+        && d.seq is int && d.seq >= 1
+        && d.machineId is string && d.machineId.matches('^[A-Za-z0-9_-]{1,40}$')
+        && logId == d.machineId + '_' + string(d.seq)
+        && d.machineName is string && d.machineName.size() <= 80
+        && d.appVersion is string && d.appVersion.size() <= 30
+        && d.occurredAt is timestamp && d.firstAt is timestamp && d.lastAt is timestamp
+        && d.firstAt <= d.lastAt
+        && d.occurredAt > request.time - duration.value(90, 'd')
+        && d.lastAt < request.time + duration.value(1, 'h')
+        && d.createdAt == request.time
+        && ((d.type == 'error' && !('expireAt' in d) && d.fingerprint is string && d.fingerprint.size() <= 120)
+          || (d.type == 'activity' && !('fingerprint' in d) && d.expireAt is timestamp
+            && d.expireAt >= d.occurredAt + duration.value(29, 'd')
+            && d.expireAt <= d.occurredAt + duration.value(31, 'd')));
+    }
+
+    // Kondisi satu PC (heartbeat Desktop, docs RENCANA_LOG_APLIKASI.md §5.2)
+    function validDevice(machineId, d) {
+      return machineId.matches('^[A-Za-z0-9_-]{1,40}$')
+        && d.keys().hasAll(['machineName', 'managerId', 'studioEmail', 'appVersion', 'lastSeen'])
+        && d.keys().hasOnly(['machineName', 'managerId', 'studioEmail', 'appVersion', 'lastSeen', 'isWaHost',
+          'waConnected', 'os', 'freeDiskGb', 'errorsToday', 'clockSkewMs', 'logsQueued', 'logsSent', 'logsDropped',
+          'logsRejected', 'oldestQueuedAt'])
+        && d.machineName is string && d.machineName.size() <= 80
+        && d.studioEmail == email()
+        && d.appVersion is string && d.appVersion.size() <= 30
+        && d.lastSeen == request.time;
+    }
+
     // Profil login. Field peran/organisasi lama tidak boleh diubah sendiri.
     match /users/{uid} {
       allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
@@ -128,10 +181,11 @@ service cloud.firestore {
       match /templates/{id} {
         allow read, write: if isMember(orgId) || isAdmin();
       }
-      // Template pesan WA boleh diubah Desktop; nota & absensi hanya owner
+      // Template pesan WA boleh diubah Desktop; nota, absensi & folder induk Drive (drive) hanya owner.
+      // driveFolders (catatan folder bulan & klaim pembuatannya) ditulis Desktop.
       match /settings/{id} {
         allow read: if isMember(orgId) || isAdmin();
-        allow write: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && !(id in ['kasir', 'attendance']));
+        allow write: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && !(id in ['kasir', 'attendance', 'drive']));
       }
 
       // Layanan & harga: hanya owner. Desktop boleh menyalakan timer ruangan dan mengurangi stok saat menjual.
@@ -208,6 +262,32 @@ service cloud.firestore {
         allow read, write: if isOwner(orgId) || isAdmin();
       }
       match /payrolls/{id} {
+        allow read, write: if isOwner(orgId) || isAdmin();
+      }
+
+      // Log aplikasi (Snapme_Desktop/docs/RENCANA_LOG_APLIKASI.md §5, §7.3, §8.3). Desktop hanya MENAMBAH log cabangnya
+      // dengan id {machineId}_{seq}; tidak bisa membaca daftar, mengubah, atau menghapus, jadi jejak aktivitas tidak bisa
+      // dihilangkan dari PC studio. Desktop boleh membaca satu dokumen log cabangnya (get) untuk memastikan kiriman
+      // ulang yang ditolak karena dokumennya sudah ada memang sudah tersimpan. Owner membaca semua & menghapus.
+      match /appLogs/{logId} {
+        allow get: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && (resource == null || resource.data.managerId == studio().managerId));
+        allow list, delete: if isOwner(orgId) || isAdmin();
+        allow create: if isStudio(orgId) && validAppLog(logId, request.resource.data)
+          && request.resource.data.managerId == studio().managerId
+          && request.resource.data.studioEmail == email();
+        allow update: if false;
+      }
+      // Kondisi tiap PC (ditimpa tiap heartbeat). Desktop menulis PC-nya sendiri di cabangnya; owner membaca.
+      match /devices/{machineId} {
+        allow read: if isMember(orgId) || isAdmin();
+        allow write: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && validDevice(machineId, request.resource.data)
+            && request.resource.data.managerId == studio().managerId
+            && (resource == null || resource.data.managerId == studio().managerId));
+      }
+      // Status "sudah ditangani" per kelompok error (sidik jari); log aslinya tidak pernah diubah.
+      match /logIssues/{fingerprint} {
         allow read, write: if isOwner(orgId) || isAdmin();
       }
 

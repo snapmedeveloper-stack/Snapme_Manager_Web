@@ -4,6 +4,7 @@ import { History, KeyRound, Pencil, Plus } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Modal, Select, Switch, useToast } from '../ui';
 import { writeInBackground } from '../../utils/firestoreWrite';
 import { studioAccountRef, studioAccountsCollection } from './timData';
+import DriveFolderCard from './DriveFolderCard';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NEW_BRANCH = '__baru__';
@@ -247,6 +248,8 @@ export default function AkunStudioSection({ orgId, user, accounts, branches, unr
           </ul>
         )}
       </Card>
+
+      <DriveFolderCard orgId={orgId} user={user} branches={branches} />
 
       {unregisteredManagers.length > 0 && (
         <Card

@@ -1,0 +1,224 @@
+/* Mode Log — prefix "log-" (Snapme_Desktop/docs/RENCANA_LOG_APLIKASI.md §7.2). Kerangka memakai class AppShell
+   (layout.css); di sini hanya tambahan khusus mode Log. */
+
+/* ----- Kerangka ----- */
+.log-app-bar { padding-left: var(--space-1); }
+.log-branch .select-wrap { max-width: 160px; }
+.log-rail-title {
+  margin: 0 var(--space-3) var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.log-rail-back { margin-top: auto; border: 0; background: none; font: inherit; cursor: pointer; text-align: left; }
+.log-nav-icon { position: relative; }
+.log-nav-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--danger);
+  color: var(--bg-surface);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 18px;
+  text-align: center;
+}
+.log-nav-icon .log-nav-badge { position: absolute; top: -2px; right: 6px; }
+.side-rail-item .log-nav-badge { margin-left: auto; }
+@media (min-width: 1024px) {
+  .log-back { display: none; }
+  .log-app-bar { padding-left: var(--page-gutter); }
+}
+
+/* ----- Toolbar Aktivitas ----- */
+.log-toolbar {
+  position: sticky;
+  top: calc(var(--appbar-h) + var(--safe-top));
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--page-gutter);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.log-search { position: relative; display: flex; align-items: center; }
+.log-search > svg { position: absolute; left: var(--space-3); color: var(--text-muted); pointer-events: none; }
+.log-search > .input { flex: 1; min-width: 0; padding-left: calc(var(--space-3) + 16px + var(--space-2)); }
+.log-search > .btn { position: absolute; right: var(--space-1); }
+.log-search > .input::-webkit-search-cancel-button { display: none; }
+.log-filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+
+/* ----- Daftar aktivitas ----- */
+.log-days { display: flex; flex-direction: column; gap: var(--space-4); }
+.log-day-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  background: var(--bg-base);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.log-hour {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.log-hour::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
+.log-list { display: flex; flex-direction: column; gap: var(--space-1); list-style: none; }
+.log-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.log-row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+@media (hover: hover) {
+  .log-row:hover { background: var(--bg-hover); }
+}
+.log-row.is-warn { border-left: 3px solid var(--warning); }
+.log-row.is-removal { border-left: 3px solid var(--danger); }
+.log-row-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+.log-cat-wa, .log-cat-bot { background: var(--accent-subtle); color: var(--accent-primary); }
+.log-cat-kasir, .log-cat-transaksi { background: var(--success-subtle); color: var(--success); }
+.log-cat-crash, .log-cat-log { background: var(--danger-subtle); color: var(--danger); }
+.log-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.log-row-text { color: var(--text-primary); overflow-wrap: anywhere; }
+.log-row-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.log-row-meta { font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; }
+
+/* ----- Ringkasan ----- */
+.log-all-good { display: flex; align-items: center; gap: var(--space-2); color: var(--success); font-weight: var(--fw-medium); }
+.log-attention { display: flex; flex-direction: column; gap: var(--space-2); list-style: none; }
+.log-attention-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+}
+.log-attention-item > svg { flex: none; margin-top: 2px; }
+.log-attention-item.is-danger { background: var(--danger-subtle); color: var(--danger); }
+.log-attention-item.is-warning { background: var(--warning-subtle); color: var(--warning); }
+.log-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-4); }
+.log-stats > div { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-base); }
+.log-stats dt { font-size: var(--fs-xs); color: var(--text-secondary); }
+.log-stats dd { font-size: var(--fs-xl); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.log-stats > div.is-danger dd { color: var(--danger); }
+.log-hours, .log-days-chart { display: flex; align-items: flex-end; gap: 2px; height: 64px; }
+.log-hour-bar, .log-day-bar { flex: 1; display: flex; align-items: flex-end; height: 100%; border-radius: var(--radius-sm); background: var(--bg-base); }
+.log-hour-fill { width: 100%; min-height: 0; border-radius: var(--radius-sm); background: var(--accent-primary); }
+.log-days-chart { margin-bottom: var(--space-3); }
+.log-hours-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--fs-xs); color: var(--text-muted); }
+.log-device-mini { display: flex; flex-direction: column; list-style: none; }
+.log-device-mini-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.log-device-mini li:last-child .log-device-mini-row { border-bottom: 0; }
+.log-device-mini-name { overflow: hidden; font-weight: var(--fw-medium); white-space: nowrap; text-overflow: ellipsis; }
+.log-muted { font-size: var(--fs-sm); color: var(--text-muted); }
+.log-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent-primary); }
+
+/* ----- Rincian ----- */
+.log-detail-message { font-size: var(--fs-md); font-weight: var(--fw-medium); color: var(--text-primary); overflow-wrap: anywhere; }
+.log-check { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--fs-sm); }
+.log-check.is-checking { background: var(--bg-base); color: var(--text-secondary); }
+.log-check.is-match { background: var(--success-subtle); color: var(--success); }
+.log-check.is-mismatch, .log-check.is-error { background: var(--danger-subtle); color: var(--danger); }
+.log-fields { display: flex; flex-direction: column; }
+.log-field {
+  display: grid;
+  grid-template-columns: minmax(96px, 35%) minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+}
+.log-field:last-child { border-bottom: 0; }
+.log-field dt { color: var(--text-secondary); }
+.log-field dd { color: var(--text-primary); overflow-wrap: anywhere; }
+.log-section-title { margin-bottom: var(--space-2); font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-secondary); }
+.log-mini-list { display: flex; flex-direction: column; gap: var(--space-1); list-style: none; font-size: var(--fs-sm); color: var(--text-primary); }
+.log-tech summary { font-size: var(--fs-sm); color: var(--text-secondary); cursor: pointer; }
+.log-tech pre {
+  max-height: 240px;
+  overflow: auto;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.log-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* ----- Error ----- */
+.log-error-list, .log-device-list { display: flex; flex-direction: column; gap: var(--space-2); list-style: none; }
+.log-error-card, .log-device-card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  color: inherit;
+}
+.log-error-card.is-error { border-left: 3px solid var(--danger); }
+.log-error-card.is-warn { border-left: 3px solid var(--warning); }
+.log-error-card.is-error .log-error-icon { color: var(--danger); }
+.log-error-card.is-warn .log-error-icon { color: var(--warning); }
+.log-error-icon { flex: none; margin-top: 2px; }
+.log-error-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.log-error-title { font-weight: var(--fw-semibold); color: var(--text-primary); overflow-wrap: anywhere; }
+@media (hover: hover) {
+  .log-error-card:hover, .log-device-card:hover { background: var(--bg-hover); }
+}
+
+/* ----- Perangkat ----- */
+.log-device-card { flex-direction: column; gap: var(--space-2); }
+.log-device-head { display: flex; align-items: center; gap: var(--space-2); }
+.log-device-name { flex: 1; min-width: 0; overflow: hidden; font-weight: var(--fw-semibold); color: var(--text-primary); white-space: nowrap; text-overflow: ellipsis; }
+.log-device-issue { display: flex; align-items: center; gap: var(--space-1); font-size: var(--fs-sm); color: var(--warning); }
+
+/* ----- Linimasa ----- */
+.log-timeline-title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); color: var(--text-primary); }

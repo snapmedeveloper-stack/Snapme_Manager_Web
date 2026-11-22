@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { CalendarDays, Package, Receipt, UserRound, Users } from 'lucide-react';
 import logo from '../../assets/logo.png';
+import { useNewErrorCount } from '../log/useLogData';
 import './layout.css';
 
 // Menu utama. staffOnly = hanya owner & manager (sama dengan akses halaman Layanan di Snapme_Desktop).
@@ -15,10 +16,17 @@ const NAV_ITEMS = [
 /**
  * Kerangka aplikasi: navbar bawah di HP, rail samping di layar lebar (≥1024px). Hanya satu yang tampil (CSS).
  * Halaman dirender di .app-content: setinggi layar dan bisa di-scroll; app bar halaman memakai AppBar.
+ * Owner: menu Profil diberi tanda jumlah error baru dari Snap Me Desktop (pintu masuk Log aplikasi ada di Profil).
  */
-export default function AppShell({ canManage, children }) {
+export default function AppShell({ canManage, orgId, children }) {
   const items = NAV_ITEMS.filter((item) => !item.staffOnly || canManage);
-  const linkClass = (base) => ({ isActive }) => `${base}${isActive ? ' is-active' : ''}`;
+  const newErrors = useNewErrorCount(canManage ? orgId : null);
+  const badgeOf = (to) => (to === '/profil' && newErrors > 0 ? newErrors : null);
+  const badgeLabel = (n) => `${n} error baru di log aplikasi`;
+  const linkClass =
+    (base) =>
+    ({ isActive }) =>
+      `${base}${isActive ? ' is-active' : ''}`;
 
   return (
     <div className="app-shell">
@@ -28,6 +36,11 @@ export default function AppShell({ canManage, children }) {
           <NavLink key={to} to={to} className={linkClass('side-rail-item')}>
             <Icon size={18} aria-hidden="true" />
             {label}
+            {badgeOf(to) && (
+              <span className="nav-badge num" aria-label={badgeLabel(badgeOf(to))}>
+                {badgeOf(to)}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -39,6 +52,11 @@ export default function AppShell({ canManage, children }) {
           <NavLink key={to} to={to} className={linkClass('bottom-nav-item')}>
             <span className="bottom-nav-icon">
               <Icon size={22} aria-hidden="true" />
+              {badgeOf(to) && (
+                <span className="nav-badge num" aria-label={badgeLabel(badgeOf(to))}>
+                  {badgeOf(to)}
+                </span>
+              )}
             </span>
             {label}
           </NavLink>

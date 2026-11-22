@@ -199,6 +199,17 @@ export function hoursOn(openingHours, dateStr) {
   return day?.closed || (minutesOf(day?.open) !== null && minutesOf(day?.close) !== null) ? day : null;
 }
 
+/**
+ * Jam buka yang sedang berlaku saat now: { open, close } bila now di antara jam buka (inklusif) dan jam tutup
+ * (eksklusif) hari ini; null bila di luar jam buka, hari tutup, atau jam buka cabang belum diatur.
+ */
+export function openNow(openingHours, now = new Date()) {
+  const hours = hoursOn(openingHours, getLocalDateString(now));
+  if (!hours || hours.closed) return null;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return minutes >= minutesOf(hours.open) && minutes < minutesOf(hours.close) ? hours : null;
+}
+
 /** Pesan kesalahan jam buka satu hari, atau '' bila valid (tutup selalu valid). */
 export function openingError(day) {
   if (day.closed) return '';

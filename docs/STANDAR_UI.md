@@ -104,6 +104,6 @@ Library baru hanya ditambahkan bila dipakai di lebih dari satu tempat atau mengg
 
 ## 7. CSS
 
-Hanya ada tiga lapis: `styles/tokens.css` (token), `styles/ui.css` (dasar & elemen standar), lalu CSS per halaman/kerangka (`pages/*.css`, `components/layout/layout.css`). Class halaman memakai prefix halamannya (`tl-`/`tlh-` Timeline, `trx-` Transaksi, `lyn-` Layanan, `tim-` Tim, `profile-` Profil).
+Hanya ada tiga lapis: `styles/tokens.css` (token), `styles/ui.css` (dasar & elemen standar), lalu CSS per halaman/kerangka (`pages/*.css`, `components/layout/layout.css`). Class halaman memakai prefix halamannya (`tl-`/`tlh-` Timeline, `trx-` Transaksi, `lyn-` Layanan, `tim-` Tim, `profile-` Profil, `log-` mode Log). Mode Log (`/log/*`, dibuka dari Profil) memakai kerangka sendiri `components/log/LogShell.jsx` dengan class AppShell (`layout.css`) dan navbar 4 menu khusus pemantauan.
 
 CSS lama (`index.css`, lalu `styles/legacy.css` beserta alias token lama) sudah dihapus seluruhnya di P6 (2026-10-24), setelah semua halaman dirombak.

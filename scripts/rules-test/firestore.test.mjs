@@ -107,6 +107,10 @@ await t('studio baca pengaturan nota', true, () => getDoc(doc(studio, `organizat
 await t('studio ubah pengaturan nota', false, () => setDoc(doc(studio, `organizations/${O}/settings/kasir`), { businessName: 'Y' }, { merge: true }));
 await t('studio ubah template pesan WA', true, () => setDoc(doc(studio, `organizations/${O}/settings/reminder_message`), { template: 'hai' }, { merge: true }));
 await t('studio ubah toleransi absensi', false, () => setDoc(doc(studio, `organizations/${O}/settings/attendance`), { lateToleranceMin: 99 }));
+await t('studio baca folder induk Drive', true, () => getDoc(doc(studio, `organizations/${O}/settings/drive`)));
+await t('studio ubah folder induk Drive', false, () => setDoc(doc(studio, `organizations/${O}/settings/drive`), { rootFolders: { m1: { folderId: 'x' } } }, { merge: true }));
+await t('studio catat folder bulan Drive', true, () => setDoc(doc(studio, `organizations/${O}/settings/driveFolders`), { months: { 'm1_2026-11': { folderId: 'f', rootId: 'r' } } }, { merge: true }));
+await t('studio klaim folder Drive booking', true, () => setDoc(doc(studio, `organizations/${O}/bookings/b1`), { driveFolderClaim: { machineId: 'pc', at: 1 } }, { merge: true }));
 await t('studio baca staff', true, () => getDocs(collection(studio, `organizations/${O}/staff`)));
 await t('studio tambah staff', false, () => addDoc(collection(studio, `organizations/${O}/staff`), { name: 'X', managerId: 'm1' }));
 await t('studio ubah jadwal', false, () => setDoc(doc(studio, `organizations/${O}/shiftSchedules/m1_2026-10-26`), { managerId: 'm1' }));
@@ -143,6 +147,7 @@ await t('akun asing buat organisasi tanpa kode', false, () => setDoc(doc(strange
 await t('owner cari organisasinya (ownerId)', true, () => getDocs(query(collection(owner, 'organizations'), where('ownerId', '==', 'owner'))));
 await t('owner ubah harga paket', true, () => updateDoc(doc(owner, `organizations/${O}/packages/p1`), { price: 150 }));
 await t('owner ubah nota', true, () => setDoc(doc(owner, `organizations/${O}/settings/kasir`), { businessName: 'Z' }, { merge: true }));
+await t('owner atur folder induk Drive', true, () => setDoc(doc(owner, `organizations/${O}/settings/drive`), { rootFolders: { m1: { folderId: 'abc' } } }, { merge: true }));
 await t('owner daftar akun studio orgnya', true, () => getDocs(query(collection(owner, 'studioAccounts'), where('orgId', '==', O))));
 await t('owner tambah akun studio', true, () => setDoc(doc(owner, 'studioAccounts', 'cabang2@x.com'), { orgId: O, managerId: 'm2', name: 'Cabang 2', active: true, uid: null }));
 await t('owner tambah akun studio ke org lain', false, () => setDoc(doc(owner, 'studioAccounts', 'cabang3@x.com'), { orgId: 'org2', managerId: 'm3' }));
@@ -183,6 +188,91 @@ await t('akun tambahan tidak bisa baca org lain', false, () => getDoc(doc(wakil,
 await t('owner utama tambah akses Manager', true, () => updateDoc(doc(owner, 'organizations', O), { ownerEmails: ['wakil@x.com', 'teman@x.com'] }));
 await t('owner utama hapus akses Manager', true, () => updateDoc(doc(owner, 'organizations', O), { ownerEmails: ['teman@x.com'] }));
 await t('akses dihapus: akun tambahan tertolak', false, () => getDoc(doc(wakil, `organizations/${O}/bookings/b1`)));
+
+// ----- Log aplikasi (Snapme_Desktop/docs/RENCANA_LOG_APLIKASI.md §7.3, §8.3) -----
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  // Uji sebelumnya menonaktifkan akun studio; bagian ini butuh akun studio aktif
+  await updateDoc(doc(db, 'studioAccounts', 'studio@x.com'), { active: true });
+  await setDoc(doc(db, `organizations/${O}/appLogs/pc_a_1`), { managerId: 'm1', event: 'sistem.app_start', machineId: 'pc_a', seq: 1 });
+  await setDoc(doc(db, `organizations/${O}/appLogs/pc_z_1`), { managerId: 'm2', event: 'sistem.app_start', machineId: 'pc_z', seq: 1 });
+  await setDoc(doc(db, `organizations/${O}/devices/pc_z`), { managerId: 'm2', machineName: 'PC cabang 2' });
+});
+let logSeq = 100;
+const ts = (ms) => Timestamp.fromMillis(ms);
+const logDoc = (over = {}) => {
+  const seq = over.seq ?? (logSeq += 1);
+  const at = Date.now() - 60000;
+  const base = {
+    type: 'activity', level: 'info', category: 'sistem', event: 'sistem.app_start', status: null, opId: null,
+    message: 'Aplikasi dibuka (versi 3.0.2)', context: { version: '3.0.2' }, subject: null, source: 'auto', count: 1,
+    seq, machineId: 'pc_a', machineName: 'PC Kasir', appVersion: '3.0.2', managerId: 'm1', studioEmail: 'studio@x.com',
+    occurredAt: ts(at), firstAt: ts(at), lastAt: ts(at), createdAt: serverTimestamp(), expireAt: ts(at + 30 * DAY),
+  };
+  const data = { ...base, ...over };
+  for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
+  return { id: over.id || `${data.machineId}_${seq}`, data };
+};
+const errDoc = (over = {}) => logDoc({ type: 'error', level: 'error', category: 'crash', event: 'crash.renderer', message: 'Error di halaman Kasir: x', context: { page: 'Kasir', error: 'x' }, source: 'user', expireAt: undefined, fingerprint: 'crash.renderer:abc', ...over });
+const writeLog = (fs_, { id, data }) => setDoc(doc(fs_, `organizations/${O}/appLogs/${id}`), data);
+const opLog = (status, opId, extra = {}) => logDoc({ category: 'wa', event: 'wa.contact_save', status, opId, message: 'Kontak Ani tersimpan di WhatsApp', context: { name: 'Ani' }, source: 'user', ...extra });
+
+await t('studio tambah log aktivitas', true, () => writeLog(studio, logDoc()));
+await t('studio tambah log error (tanpa expireAt)', true, () => writeLog(studio, errDoc()));
+await t('studio tambah hasil operasi dengan opId', true, () => writeLog(studio, opLog('succeeded', 'op1', { subject: { kind: 'chat', id: '6281****7890@c.us', name: 'Ani' } })));
+await t('studio tambah log batch', true, () => {
+  const b = writeBatch(studio);
+  for (let i = 0; i < 3; i++) { const l = logDoc(); b.set(doc(studio, `organizations/${O}/appLogs/${l.id}`), l.data); }
+  return b.commit();
+});
+await t('studio daftar log (list)', false, () => getDocs(collection(studio, `organizations/${O}/appLogs`)));
+await t('studio cek log cabangnya (get)', true, () => getDoc(doc(studio, `organizations/${O}/appLogs/pc_a_1`)));
+await t('studio cek log yang belum ada (get)', true, () => getDoc(doc(studio, `organizations/${O}/appLogs/pc_a_99999`)));
+await t('studio baca log cabang lain', false, () => getDoc(doc(studio, `organizations/${O}/appLogs/pc_z_1`)));
+await t('studio tulis ulang log yang sudah ada', false, () => writeLog(studio, logDoc({ seq: 1 })));
+await t('studio ubah log', false, () => updateDoc(doc(studio, `organizations/${O}/appLogs/pc_a_1`), { message: 'diganti' }));
+await t('studio hapus log', false, () => deleteDoc(doc(studio, `organizations/${O}/appLogs/pc_a_1`)));
+await t('studio log atas nama cabang lain', false, () => writeLog(studio, logDoc({ managerId: 'm2' })));
+await t('studio log dengan email akun lain', false, () => writeLog(studio, logDoc({ studioEmail: 'lain@x.com' })));
+await t('studio log id tidak cocok machineId_seq', false, () => writeLog(studio, logDoc({ id: 'pc_a_abc' })));
+await t('studio log field tambahan', false, () => writeLog(studio, logDoc({ hacked: true })));
+await t('studio log tanpa field wajib', false, () => writeLog(studio, logDoc({ source: undefined })));
+await t('studio log event tidak sah', false, () => writeLog(studio, logDoc({ event: 'Sistem.App', category: 'Sistem' })));
+await t('studio log kategori tidak cocok event', false, () => writeLog(studio, logDoc({ category: 'kasir' })));
+await t('studio log kalimat kosong', false, () => writeLog(studio, logDoc({ message: '' })));
+await t('studio log kalimat > 500', false, () => writeLog(studio, logDoc({ message: 'x'.repeat(501) })));
+await t('studio log status asing', false, () => writeLog(studio, opLog('delivered', 'op2')));
+await t('studio log hasil tanpa opId', false, () => writeLog(studio, opLog('succeeded', null)));
+await t('studio log opId tanpa status', false, () => writeLog(studio, logDoc({ opId: 'op3' })));
+await t('studio log sumber asing', false, () => writeLog(studio, logDoc({ source: 'hacker' })));
+await t('studio log subject jenis asing', false, () => writeLog(studio, logDoc({ subject: { kind: 'x', id: '1', name: 'a' } })));
+await t('studio log count 0', false, () => writeLog(studio, logDoc({ count: 0 })));
+await t('studio aktivitas tanpa expireAt', false, () => writeLog(studio, logDoc({ expireAt: undefined })));
+await t('studio aktivitas disimpan 60 hari', false, () => writeLog(studio, logDoc({ expireAt: ts(Date.now() + 60 * DAY) })));
+await t('studio error dengan expireAt (harus disimpan terus)', false, () => writeLog(studio, errDoc({ expireAt: ts(Date.now() + 30 * DAY) })));
+await t('studio error tanpa sidik jari', false, () => writeLog(studio, errDoc({ fingerprint: undefined })));
+await t('studio log waktu di masa depan', false, () => { const f = Date.now() + 2 * 3600000; return writeLog(studio, logDoc({ occurredAt: ts(f), firstAt: ts(f), lastAt: ts(f), expireAt: ts(f + 30 * DAY) })); });
+await t('studio log waktu 100 hari lalu', false, () => { const p = Date.now() - 100 * DAY; return writeLog(studio, logDoc({ occurredAt: ts(p), firstAt: ts(p), lastAt: ts(p), expireAt: ts(p + 30 * DAY) })); });
+await t('studio log createdAt jam PC (bukan server)', false, () => writeLog(studio, logDoc({ createdAt: ts(Date.now()) })));
+await t('studio log firstAt setelah lastAt', false, () => writeLog(studio, errDoc({ firstAt: ts(Date.now()), lastAt: ts(Date.now() - 3600000) })));
+await t('studio nonaktif tambah log', false, () => writeLog(off, logDoc({ studioEmail: 'off@x.com' })));
+await t('orang lain tambah log', false, () => writeLog(stranger, logDoc({ studioEmail: 'random@gmail.com' })));
+await t('owner daftar log', true, () => getDocs(query(collection(owner, `organizations/${O}/appLogs`), where('type', '==', 'activity'))));
+await t('owner ubah log', false, () => updateDoc(doc(owner, `organizations/${O}/appLogs/pc_a_1`), { message: 'diganti' }));
+await t('owner hapus log', true, () => deleteDoc(doc(owner, `organizations/${O}/appLogs/pc_z_1`)));
+await t('orang lain baca log', false, () => getDoc(doc(stranger, `organizations/${O}/appLogs/pc_a_1`)));
+
+const device = (over = {}) => ({ machineName: 'PC Kasir', managerId: 'm1', studioEmail: 'studio@x.com', appVersion: '3.0.2', lastSeen: serverTimestamp(), isWaHost: true, waConnected: true, logsQueued: 0, ...over });
+await t('studio tulis kondisi PC-nya', true, () => setDoc(doc(studio, `organizations/${O}/devices/pc_a`), device()));
+await t('studio kondisi PC lastSeen jam PC', false, () => setDoc(doc(studio, `organizations/${O}/devices/pc_a`), device({ lastSeen: ts(Date.now()) })));
+await t('studio kondisi PC field tambahan', false, () => setDoc(doc(studio, `organizations/${O}/devices/pc_a`), device({ hacked: 1 })));
+await t('studio kondisi PC cabang lain', false, () => setDoc(doc(studio, `organizations/${O}/devices/pc_b`), device({ managerId: 'm2' })));
+await t('studio timpa PC milik cabang lain', false, () => setDoc(doc(studio, `organizations/${O}/devices/pc_z`), device()));
+await t('owner baca kondisi PC', true, () => getDocs(collection(owner, `organizations/${O}/devices`)));
+await t('orang lain baca kondisi PC', false, () => getDocs(collection(stranger, `organizations/${O}/devices`)));
+await t('owner tandai error ditangani', true, () => setDoc(doc(owner, `organizations/${O}/logIssues/crash.renderer:abc`), { resolvedAt: serverTimestamp(), resolvedBy: 'owner@x.com' }));
+await t('studio tandai error ditangani', false, () => setDoc(doc(studio, `organizations/${O}/logIssues/crash.renderer:abc`), { resolvedAt: serverTimestamp() }));
+await t('studio baca status error', false, () => getDoc(doc(studio, `organizations/${O}/logIssues/crash.renderer:abc`)));
 
 // ----- Owner baru menebus kode owner (Snapme Manager) -----
 await t('owner baru: tebus kode + buat organisasi (batch)', true, () => {

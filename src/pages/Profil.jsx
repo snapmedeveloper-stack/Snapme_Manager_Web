@@ -4,6 +4,7 @@ import AppBar from '../components/layout/AppBar';
 import KasirSettings from '../components/profil/KasirSettings';
 import ManagerAccess from '../components/profil/ManagerAccess';
 import AttendanceSettings from '../components/profil/AttendanceSettings';
+import LogEntryCard from '../components/log/LogEntryCard';
 import { ROLE_LABEL, ROLE_TONE } from '../constants/roles';
 import './Profil.css';
 
@@ -69,6 +70,7 @@ export default function Profil({ user, orgId, userMeta, branches = [], viewManag
           </Card>
         )}
 
+        {canManage && <LogEntryCard orgId={orgId} />}
         {canManage && <ManagerAccess orgId={orgId} isPrimaryOwner={!!userMeta?.isPrimaryOwner} />}
         {canManage && <KasirSettings orgId={orgId} />}
         {canManage && <AttendanceSettings orgId={orgId} />}

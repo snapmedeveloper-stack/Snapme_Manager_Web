@@ -8,6 +8,8 @@ export const staffCollection = (orgId) => collection(db, 'organizations', orgId,
 export const scheduleCollection = (orgId) => collection(db, 'organizations', orgId, 'shiftSchedules');
 export const attendanceCollection = (orgId) => collection(db, 'organizations', orgId, 'attendance');
 export const attendanceSettingsRef = (orgId) => doc(db, 'organizations', orgId, 'settings', 'attendance');
+/** Folder induk Google Drive per cabang (dibaca Snap Me Desktop: services/driveFolderService.js). */
+export const driveSettingsRef = (orgId) => doc(db, 'organizations', orgId, 'settings', 'drive');
 export const studioAccountsCollection = () => collection(db, 'studioAccounts');
 /** Id dokumen akun studio = email huruf kecil, supaya rules & Desktop bisa mencarinya dari token login. */
 export const studioAccountRef = (email) => doc(db, 'studioAccounts', email.trim().toLowerCase());
