@@ -3,6 +3,7 @@ import { Button, Modal, MoneyInput } from '../ui';
 import { formatRupiah } from '../../utils/format';
 import { formatMonth } from '../../utils/attendance';
 import { STAFF_LABELS } from './staffLabels';
+import { staffRateDrafts, staffRatesFromDrafts } from './gajiUtils';
 
 // Tarif yang disimpan di payrollSettings; tunjangan label mengikuti STAFF_LABELS
 const RATE_KEYS = ['hourlyRate', 'mealAllowance', ...STAFF_LABELS.map((l) => l.settingKey)];
@@ -10,27 +11,38 @@ const RATE_KEYS = ['hourlyRate', 'mealAllowance', ...STAFF_LABELS.map((l) => l.s
 const toAmount = (text) => Math.max(0, Math.round(Number(text) || 0));
 const draftOf = (amount) => (amount ? String(amount) : '');
 
-/** Isian rupiah dengan label & keterangan (dipakai untuk tarif dan fee paket). */
-function AmountField({ id, label, hint, value, onChange, error }) {
+/** Isian rupiah dengan label & keterangan (dipakai untuk tarif, harga per jam staff, dan fee paket). */
+function AmountField({ id, label, hint, value, onChange, error, placeholder }) {
   return (
     <div className="form-group">
       <label htmlFor={id}>{label}</label>
-      <MoneyInput id={id} className={error ? 'is-error' : ''} value={value} onChange={onChange} />
+      <MoneyInput
+        id={id}
+        className={error ? 'is-error' : ''}
+        value={value}
+        onChange={onChange}
+        {...(placeholder && { placeholder })}
+      />
       {error ? <span className="form-error">{error}</span> : hint && <span className="form-hint">{hint}</span>}
     </div>
   );
 }
 
 /**
- * Pengaturan gaji cabang mulai bulan ini: harga per jam (× jam kerja di Absensi), uang makan per hari (× hari jaga),
+ * Pengaturan gaji cabang mulai bulan ini: harga per jam bawaan (× jam kerja di Absensi) dan harga per jam khusus per
+ * staff (kosong = ikut bawaan; staff aktif, ditambah staff nonaktif yang sudah punya harga khusus), uang makan per hari (× hari jaga),
  * tunjangan label staff (Admin per bulan, CS per hari hadir), dan fee penanggung jawab per paket (sama dengan isian fee
  * di Layanan, maksimal harga paket). settings: pengaturan yang berlaku sekarang (gajiUtils.payrollSettingsFor).
- * onSave({ hourlyRate, mealAllowance, adminAllowance, csAllowance, packageFees: { packageId: fee } hanya yang berubah }).
+ * onSave({ hourlyRate, staffHourlyRates: { staffId: harga }, mealAllowance, adminAllowance, csAllowance,
+ * packageFees: { packageId: fee } hanya yang berubah }).
  */
-export default function PayrollSettingsForm({ month, settings, packages, onSave, onClose }) {
+export default function PayrollSettingsForm({ month, settings, packages, staff = [], onSave, onClose }) {
   const formId = useId();
   const [rates, setRates] = useState(() => Object.fromEntries(RATE_KEYS.map((key) => [key, draftOf(settings[key])])));
   const setRate = (key) => (value) => setRates((prev) => ({ ...prev, [key]: value }));
+  // Harga khusus 0 tetap berlaku (mis. staff yang hanya dibayar tunjangan), jadi draf kosong ≠ 0
+  const [{ staff: rateStaff, drafts: initialStaffRates }] = useState(() => staffRateDrafts(settings, staff));
+  const [staffRates, setStaffRates] = useState(initialStaffRates);
   const [fees, setFees] = useState(() => Object.fromEntries(packages.map((p) => [p.id, draftOf(p.handlerFee)])));
   const feeError = (p) => (toAmount(fees[p.id]) > (p.price || 0) ? 'Fee tidak boleh melebihi harga paket.' : '');
   const valid = packages.every((p) => !feeError(p));
@@ -41,7 +53,11 @@ export default function PayrollSettingsForm({ month, settings, packages, onSave,
     const packageFees = Object.fromEntries(
       packages.filter((p) => toAmount(fees[p.id]) !== (p.handlerFee || 0)).map((p) => [p.id, toAmount(fees[p.id])]),
     );
-    onSave({ ...Object.fromEntries(RATE_KEYS.map((key) => [key, toAmount(rates[key])])), packageFees });
+    onSave({
+      ...Object.fromEntries(RATE_KEYS.map((key) => [key, toAmount(rates[key])])),
+      staffHourlyRates: staffRatesFromDrafts(staffRates),
+      packageFees,
+    });
   };
 
   return (
@@ -67,8 +83,8 @@ export default function PayrollSettingsForm({ month, settings, packages, onSave,
           <div className="tim-pay-rates">
             <AmountField
               id={`${formId}-hourly`}
-              label="Harga per jam"
-              hint="Dikali jam kerja di Absensi."
+              label="Harga per jam bawaan"
+              hint="Dikali jam kerja di Absensi, untuk staff tanpa harga khusus."
               value={rates.hourlyRate}
               onChange={setRate('hourlyRate')}
             />
@@ -81,6 +97,29 @@ export default function PayrollSettingsForm({ month, settings, packages, onSave,
             />
           </div>
         </section>
+
+        {rateStaff.length > 0 && (
+          <section className="tim-pay-settings" aria-labelledby={`${formId}-staff-rates`}>
+            <h3 id={`${formId}-staff-rates`} className="tim-pay-settings-title">
+              Harga per jam per staff
+            </h3>
+            <p className="form-hint">
+              Kosongkan untuk memakai harga per jam bawaan ({formatRupiah(toAmount(rates.hourlyRate))}).
+            </p>
+            <div className="tim-pay-rates">
+              {rateStaff.map((p) => (
+                <AmountField
+                  key={p.id}
+                  id={`${formId}-staff-${p.id}`}
+                  label={p.active === false ? `${p.name} (nonaktif)` : p.name}
+                  placeholder={`${formatRupiah(toAmount(rates.hourlyRate))} (bawaan)`}
+                  value={staffRates[p.id]}
+                  onChange={(value) => setStaffRates((prev) => ({ ...prev, [p.id]: value }))}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="tim-pay-settings" aria-labelledby={`${formId}-labels`}>
           <h3 id={`${formId}-labels`} className="tim-pay-settings-title">

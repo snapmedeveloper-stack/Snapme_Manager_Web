@@ -11,8 +11,9 @@ export const transactionCollection = (orgId) => collection(db, 'organizations', 
 const payrollRef = (orgId, month, staffId) => doc(payrollCollection(orgId), `${month}_${staffId}`);
 
 /**
- * Simpan pengaturan gaji cabang mulai bulan itu (payrollSettings/{managerId}_{YYYY-MM}: hourlyRate, mealAllowance,
- * adminAllowance, csAllowance), sekaligus fee paket yang berubah ({ [packageId]: handlerFee }), dalam satu batch.
+ * Simpan pengaturan gaji cabang mulai bulan itu (payrollSettings/{managerId}_{YYYY-MM}: hourlyRate bawaan,
+ * staffHourlyRates { staffId: harga per jam khusus }, mealAllowance, adminAllowance, csAllowance), sekaligus fee paket
+ * yang berubah ({ [packageId]: handlerFee }), dalam satu batch.
  */
 export function savePayrollSettings(orgId, user, { managerId, month, packageFees, ...rates }) {
   const batch = writeBatch(db);
@@ -20,6 +21,7 @@ export function savePayrollSettings(orgId, user, { managerId, month, packageFees
     managerId,
     month,
     hourlyRate: rates.hourlyRate,
+    staffHourlyRates: rates.staffHourlyRates || {},
     mealAllowance: rates.mealAllowance,
     adminAllowance: rates.adminAllowance,
     csAllowance: rates.csAllowance,

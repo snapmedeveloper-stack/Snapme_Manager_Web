@@ -62,6 +62,7 @@ export default function GajiSection({ orgId, user, managerId, month, onMonthChan
     inBranch,
   });
   const totals = payrollTotals(rows);
+  const customRateCount = rows.filter((r) => r.customRate).length;
   // Nominal tunjangan sudah diisi tetapi belum ada staff aktif berlabel itu: tunjangannya tidak akan masuk ke siapa pun
   const unlabeledRates = STAFF_LABELS.filter(
     (l) =>
@@ -117,7 +118,8 @@ export default function GajiSection({ orgId, user, managerId, month, onMonthChan
       staffId: row.staff.id,
       staffName: row.staff.name,
       managerId,
-      hourlyRate: settings.hourlyRate,
+      hourlyRate: row.hourlyRate,
+      customRate: row.customRate,
       minutes: row.minutes,
       hours: row.hours,
       hoursPay: row.hoursPay,
@@ -230,8 +232,10 @@ export default function GajiSection({ orgId, user, managerId, month, onMonthChan
             {gaji.error && <p className="form-error">Sebagian data gagal dimuat: {gaji.error}</p>}
             {settings.month ? (
               <p className="tim-pay-rate num">
-                {formatRupiah(settings.hourlyRate)}/jam · uang makan {formatRupiah(settings.mealAllowance)}/hari · Admin{' '}
-                {formatRupiah(settings.adminAllowance)}/bulan · CS {formatRupiah(settings.csAllowance)}/hari hadir
+                {formatRupiah(settings.hourlyRate)}/jam
+                {customRateCount > 0 && ` (${customRateCount} staff harga khusus)`} · uang makan{' '}
+                {formatRupiah(settings.mealAllowance)}/hari · Admin {formatRupiah(settings.adminAllowance)}/bulan · CS{' '}
+                {formatRupiah(settings.csAllowance)}/hari hadir
                 {settings.month !== month && (
                   <span className="tim-pay-muted"> (tarif sejak {formatMonth(settings.month)})</span>
                 )}
@@ -359,6 +363,7 @@ export default function GajiSection({ orgId, user, managerId, month, onMonthChan
           month={month}
           settings={settings}
           packages={activePackages}
+          staff={data.staff}
           onSave={handleSaveSettings}
           onClose={() => setEditingSettings(false)}
         />

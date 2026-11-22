@@ -75,7 +75,7 @@ export default function PayslipSheet({
           Periode {formatMonth(month)}, dibayar awal {formatMonth(addMonths(month, 1))}.
         </p>
 
-        <PayLine label="Jam kerja" detail={hoursDetail(row, settings)} amount={hoursPay} />
+        <PayLine label="Jam kerja" detail={hoursDetail(row)} amount={hoursPay} />
         <PayLine
           label="Uang makan"
           detail={`${days} hari × ${formatRupiah(settings.mealAllowance)}`}

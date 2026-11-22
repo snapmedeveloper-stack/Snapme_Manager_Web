@@ -1,6 +1,7 @@
 // Perhitungan murni bagian Gaji per staff per bulan kerja:
 // - upah jam kerja = harga per jam × total jam kerja sebulan di Absensi, dibulatkan ke atas ke jam penuh (45j 30m →
-//   46 jam; jaga yang belum selesai belum dihitung);
+//   46 jam; jaga yang belum selesai belum dihitung). Harga per jam bisa diatur khusus per staff (staffHourlyRates);
+//   staff tanpa harga khusus memakai harga per jam bawaan cabang;
 // - uang makan = uang makan per hari × jumlah hari jaga (satu kali per hari, berapa pun catatan kerjanya);
 // - tunjangan label staff: Admin tetap per bulan, CS per hari hadir (staffLabels.js);
 // - fee penanggung jawab paket dari transaksi yang dibuat di bulan itu (createdAt);
@@ -28,12 +29,40 @@ export const packageNamesOf = (tx, packages) => {
     .join(', ');
 };
 
-/** Hitungan upah jam kerja, mis. "46 jam (45j 30m dibulatkan ke atas) × Rp 15.000". */
-export const hoursDetail = (row, settings) =>
-  `${row.hours} jam${row.minutes % 60 ? ` (${formatDuration(row.minutes)} dibulatkan ke atas)` : ''} × ${formatRupiah(settings.hourlyRate)}`;
+/** Hitungan upah jam kerja, mis. "46 jam (45j 30m dibulatkan ke atas) × Rp 15.000 (harga khusus)". */
+export const hoursDetail = (row) =>
+  `${row.hours} jam${row.minutes % 60 ? ` (${formatDuration(row.minutes)} dibulatkan ke atas)` : ''} × ${formatRupiah(row.hourlyRate)}${row.customRate ? ' (harga khusus)' : ''}`;
+
+/** Harga per jam satu staff: harga khusus staff itu bila diatur (0 juga berlaku), selain itu harga bawaan cabang. */
+export const hourlyRateOf = (settings, staffId) => {
+  const custom = settings.staffHourlyRates?.[staffId];
+  return Number.isFinite(custom) ? { rate: custom, custom: true } : { rate: settings.hourlyRate, custom: false };
+};
+
+/**
+ * Isian harga per jam per staff di form Atur: staff aktif, ditambah staff nonaktif yang sudah punya harga khusus (supaya
+ * harganya tidak hilang diam-diam). Hasil { staff: [...], drafts: { staffId: '15000' | '' } }; '' = ikut harga bawaan.
+ */
+export function staffRateDrafts(settings, staff) {
+  const saved = settings.staffHourlyRates || {};
+  const list = staff.filter((p) => p.active !== false || Number.isFinite(saved[p.id]));
+  return {
+    staff: list,
+    drafts: Object.fromEntries(list.map((p) => [p.id, Number.isFinite(saved[p.id]) ? String(saved[p.id]) : ''])),
+  };
+}
+
+/** Draf isian → staffHourlyRates yang disimpan: hanya yang diisi (0 juga disimpan), angka bulat ≥ 0. */
+export const staffRatesFromDrafts = (drafts) =>
+  Object.fromEntries(
+    Object.entries(drafts)
+      .filter(([, text]) => String(text ?? '').trim() !== '')
+      .map(([staffId, text]) => [staffId, Math.max(0, Math.round(Number(text) || 0))]),
+  );
 
 export const EMPTY_PAYROLL_SETTINGS = {
   hourlyRate: 0,
+  staffHourlyRates: {},
   mealAllowance: 0,
   adminAllowance: 0,
   csAllowance: 0,
@@ -42,8 +71,8 @@ export const EMPTY_PAYROLL_SETTINGS = {
 
 /**
  * Pengaturan gaji yang berlaku di bulan itu: dokumen payrollSettings cabang untuk bulan itu, atau bulan terakhir
- * sebelumnya (tarif terbawa sampai diubah). { hourlyRate, mealAllowance, adminAllowance, csAllowance, month: bulan asal
- * pengaturan | null }.
+ * sebelumnya (tarif terbawa sampai diubah). { hourlyRate, staffHourlyRates: { staffId: harga per jam khusus },
+ * mealAllowance, adminAllowance, csAllowance, month: bulan asal pengaturan | null }.
  */
 export function payrollSettingsFor(docs, month) {
   const found = docs
@@ -52,6 +81,7 @@ export function payrollSettingsFor(docs, month) {
   if (!found) return EMPTY_PAYROLL_SETTINGS;
   return {
     hourlyRate: found.hourlyRate || 0,
+    staffHourlyRates: found.staffHourlyRates || {},
     mealAllowance: found.mealAllowance || 0,
     adminAllowance: found.adminAllowance || 0,
     csAllowance: found.csAllowance || 0,
@@ -112,7 +142,7 @@ export function workByStaff(records) {
  * - bonuses: dokumen payrollBonuses bulan itu ({ staffId, amount, note, createdAt });
  * - payrolls: { staffId: dokumen payrolls bulan itu (angka yang dibekukan saat ditandai dibayar) }.
  * Hasil:
- * - rows: [{ staff, minutes, hours (dibulatkan ke atas), hoursPay, days, mealPay, fees: [{ tx, amount, shareCount }],
+ * - rows: [{ staff, minutes, hours (dibulatkan ke atas), hourlyRate, customRate (harga khusus staff), hoursPay, days, mealPay, fees: [{ tx, amount, shareCount }],
  *   feeTotal, allowances: [{ key, label, perDay, rate, amount, note }], allowanceTotal, bonuses, bonusTotal, total, payroll,
  *   changed }] untuk staff aktif, ditambah staff nonaktif yang masih
  *   punya kerja/fee/bonus/tanda dibayar di bulan itu;
@@ -142,7 +172,8 @@ export function buildPayroll({ staff, transactions, packages, records, settings,
       const fees = feesByStaff.get(person.id).filter((f) => f.amount > 0);
       const ownBonuses = sortedBonuses.filter((b) => b.staffId === person.id);
       const hours = Math.ceil(minutes / 60);
-      const hoursPay = hours * settings.hourlyRate;
+      const { rate: hourlyRate, custom: customRate } = hourlyRateOf(settings, person.id);
+      const hoursPay = hours * hourlyRate;
       const mealPay = days * settings.mealAllowance;
       const feeTotal = fees.reduce((sum, f) => sum + f.amount, 0);
       const bonusTotal = ownBonuses.reduce((sum, b) => sum + (b.amount || 0), 0);
@@ -154,6 +185,8 @@ export function buildPayroll({ staff, transactions, packages, records, settings,
         staff: person,
         minutes,
         hours,
+        hourlyRate,
+        customRate,
         hoursPay,
         days,
         mealPay,

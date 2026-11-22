@@ -56,7 +56,7 @@ export function printPayslip(row, { month, settings, packages, records, branchNa
   const summary = table(
     ['Komponen', 'Hitungan', 'Jumlah'],
     [
-      ['Jam kerja', hoursDetail(row, settings), formatRupiah(row.hoursPay)],
+      ['Jam kerja', hoursDetail(row), formatRupiah(row.hoursPay)],
       ['Uang makan', `${row.days} hari × ${formatRupiah(settings.mealAllowance)}`, formatRupiah(row.mealPay)],
       ...row.allowances.map((a) => [`Tunjangan ${a.label}`, allowanceDetail(a, row.days), formatRupiah(a.amount)]),
       ['Fee paket', `${row.fees.length} transaksi`, formatRupiah(row.feeTotal)],
@@ -135,7 +135,7 @@ export function payrollCsv(rows, { month, settings, packages, branchName }) {
   const lines = [
     csvLine([`Rekap gaji ${branchName || 'Snap Me'}`, formatMonth(month)]),
     csvLine([
-      'Harga per jam',
+      'Harga per jam bawaan',
       settings.hourlyRate,
       'Uang makan per hari',
       settings.mealAllowance,
@@ -149,6 +149,7 @@ export function payrollCsv(rows, { month, settings, packages, branchName }) {
       'Nama',
       'Jam kerja (dibulatkan)',
       'Jam kerja asli',
+      'Harga per jam',
       'Upah jam kerja',
       'Hari jaga',
       'Uang makan',
@@ -164,6 +165,7 @@ export function payrollCsv(rows, { month, settings, packages, branchName }) {
         r.staff.name,
         r.hours,
         formatDuration(r.minutes),
+        r.hourlyRate,
         r.hoursPay,
         r.days,
         r.mealPay,
@@ -178,6 +180,7 @@ export function payrollCsv(rows, { month, settings, packages, branchName }) {
     csvLine([
       'TOTAL',
       rows.reduce((s, r) => s + r.hours, 0),
+      '',
       '',
       rows.reduce((s, r) => s + r.hoursPay, 0),
       rows.reduce((s, r) => s + r.days, 0),
