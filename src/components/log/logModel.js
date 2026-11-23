@@ -1,6 +1,7 @@
 // Logika murni mode Log (Snapme_Desktop/docs/RENCANA_LOG_APLIKASI.md §7.2, §8). Dokumen appLogs dibaca apa adanya;
 // status yang ditampilkan diturunkan dari bukti: hasil operasi, centang WhatsApp, nomor urut, dan kondisi PC. Tidak ada
 // yang dianggap berhasil tanpa catatan hasilnya.
+import { explainError } from './errorExplain';
 
 export const OP_TIMEOUT_MS = 15 * 60 * 1000; // operasi tanpa hasil selama ini = "Tidak selesai"
 export const OFFLINE_AFTER_MS = 15 * 60 * 1000; // PC tanpa heartbeat selama ini = offline
@@ -127,8 +128,9 @@ export function ackSummary(acks = []) {
 
 /**
  * Error → kelompok per sidik jari. issues = { [fingerprint]: { resolvedAt } }.
- * Hasil terurut dari yang terakhir terjadi: { fingerprint, message, level, event, count, firstAt, lastAt, machines,
- * versions, docs, status: 'open' | 'resolved' | 'reopened' }. Error yang muncul lagi setelah ditandai = 'reopened'.
+ * Hasil terurut dari yang terakhir terjadi: { fingerprint, message, context & subject (kejadian terakhir), level, event,
+ * count, firstAt, lastAt, machines, versions, docs, status: 'open' | 'resolved' | 'reopened', explain: { title, meaning,
+ * action } }. Error yang muncul lagi setelah ditandai = 'reopened'.
  */
 export function groupErrors(docs, issues = {}) {
   const groups = new Map();
@@ -138,6 +140,8 @@ export function groupErrors(docs, issues = {}) {
       fingerprint: fp,
       event: d.event,
       message: d.message,
+      context: d.context || {},
+      subject: d.subject || null,
       level: d.level,
       count: 0,
       firstAt: Infinity,
@@ -152,6 +156,8 @@ export function groupErrors(docs, issues = {}) {
     if (last >= g.lastAt) {
       g.lastAt = last;
       g.message = d.message;
+      g.context = d.context || {};
+      g.subject = d.subject || null;
     }
     if (d.level === 'error') g.level = 'error';
     g.machines.add(d.machineName || d.machineId);
@@ -163,9 +169,31 @@ export function groupErrors(docs, issues = {}) {
     .map((g) => {
       const resolvedAt = toMs(issues[g.fingerprint]?.resolvedAt);
       const status = resolvedAt == null ? 'open' : resolvedAt >= g.lastAt ? 'resolved' : 'reopened';
-      return { ...g, machines: [...g.machines], versions: [...g.versions], status, resolvedAt };
+      return {
+        ...g,
+        machines: [...g.machines],
+        versions: [...g.versions],
+        status,
+        resolvedAt,
+        explain: explainError(g),
+      };
     })
     .sort((a, b) => b.lastAt - a.lastAt);
+}
+
+/**
+ * Kirim WhatsApp yang tercatat bermasalah tapi kemudian tetap mendapat centang (HP customer baru online): { at, ack }
+ * dari centang terbaik untuk operasi itu (context.opRef), atau null. timeline = catatan objek yang sama (subject.id).
+ */
+export function deliveredAfter(problemDoc, timeline = []) {
+  const ref = problemDoc?.context?.opRef;
+  if (problemDoc?.event !== 'wa.send_problem' || !ref) return null;
+  const acks = timeline.filter(
+    (d) => d.event === 'wa.message_ack' && d.context?.opRef === ref && Number(d.context?.ack) >= 1,
+  );
+  if (!acks.length) return null;
+  const best = acks.reduce((a, b) => (Number(b.context.ack) > Number(a.context.ack) ? b : a));
+  return { at: toMs(best.occurredAt), ack: Number(best.context.ack) };
 }
 
 /** "3.0.10" > "3.0.9" */
@@ -247,7 +275,7 @@ export function attentionItems({ errorGroups = [], devices = [], gaps = [], now 
     if (g.status !== 'resolved') {
       items.push({
         tone: g.level === 'error' ? 'danger' : 'warning',
-        text: `${g.message}${g.count > 1 ? ` ×${g.count}` : ''}`,
+        text: `${g.explain?.title || g.message}${g.count > 1 ? ` ×${g.count}` : ''}`,
         to: `error/${encodeURIComponent(g.fingerprint)}`,
       });
     }
@@ -451,6 +479,7 @@ export function developerReport(group, lastActions = []) {
   const lines = [
     `Snap Me — laporan error`,
     `Pesan: ${group.message}`,
+    ...(group.explain?.title && group.explain.title !== group.message ? [`Penjelasan: ${group.explain.title}`] : []),
     `Event: ${group.event}`,
     `Sidik jari: ${group.fingerprint}`,
     `Jumlah: ${group.count}× (pertama ${formatFull(group.firstAt)}, terakhir ${formatFull(group.lastAt)})`,

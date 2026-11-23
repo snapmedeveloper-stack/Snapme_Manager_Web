@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { CircleCheck, CircleX, GitBranch, Loader } from 'lucide-react';
 import { Badge, Button, Modal } from '../ui';
 import { useCrossCheck } from './useLogData';
+import { explainError } from './errorExplain';
 import {
   CATEGORY_LABEL,
   OP_STATUS,
@@ -24,7 +25,7 @@ function Field({ label, children }) {
 
 /**
  * Rincian satu baris aktivitas/error: kalimat, status bukti (hasil operasi, centang WhatsApp, pemeriksaan silang dengan
- * data nyata), waktu persis, PC & akun, isi konteks, dan tautan ke linimasa objeknya.
+ * data nyata), penjelasan sehari-hari untuk error, waktu persis, PC & akun, isi konteks, dan tautan ke linimasa objeknya.
  */
 export default function LogDetailSheet({ row, orgId, branchName, onClose }) {
   const navigate = useNavigate();
@@ -35,11 +36,12 @@ export default function LogDetailSheet({ row, orgId, branchName, onClose }) {
   const subject = doc.subject;
   const context = { ...(row.started?.context || {}), ...(doc.context || {}) };
   const rows = contextRows(context);
+  const explain = doc.type === 'error' ? explainError(doc) : null;
 
   return (
     <Modal open title={CATEGORY_LABEL[doc.category] || doc.category} onClose={onClose}>
       <div className="form-stack">
-        <p className="log-detail-message">{doc.message}</p>
+        <p className="log-detail-message">{explain ? explain.title : doc.message}</p>
         <div className="log-row-badges">
           {op && <Badge tone={op.tone}>{op.label}</Badge>}
           {ack && <Badge tone={ack.tone}>{ack.label}</Badge>}
@@ -47,6 +49,14 @@ export default function LogDetailSheet({ row, orgId, branchName, onClose }) {
           {doc.level === 'error' && <Badge tone="danger">Error</Badge>}
           <Badge tone="neutral">{SOURCE_LABEL[doc.source] || doc.source}</Badge>
         </div>
+
+        {explain && (
+          <div>
+            <p className="log-explain-text">{explain.meaning}</p>
+            <p className="log-explain-label log-explain-gap">Yang perlu dilakukan</p>
+            <p className="log-explain-text">{explain.action}</p>
+          </div>
+        )}
 
         {check && (
           <p className={`log-check is-${check.status}`}>
@@ -59,6 +69,7 @@ export default function LogDetailSheet({ row, orgId, branchName, onClose }) {
         )}
 
         <dl className="log-fields">
+          {explain && explain.title !== doc.message && <Field label="Pesan asli">{doc.message}</Field>}
           <Field label="Waktu">{formatFull(row.at)}</Field>
           {row.kind === 'op' && row.started && row.result && (
             <Field label="Lama proses">

@@ -109,6 +109,8 @@ await t('studio ubah template pesan WA', true, () => setDoc(doc(studio, `organiz
 await t('studio ubah toleransi absensi', false, () => setDoc(doc(studio, `organizations/${O}/settings/attendance`), { lateToleranceMin: 99 }));
 await t('studio baca folder induk Drive', true, () => getDoc(doc(studio, `organizations/${O}/settings/drive`)));
 await t('studio ubah folder induk Drive', false, () => setDoc(doc(studio, `organizations/${O}/settings/drive`), { rootFolders: { m1: { folderId: 'x' } } }, { merge: true }));
+await t('studio baca nama PC dari owner', true, () => getDoc(doc(studio, `organizations/${O}/settings/deviceNames`)));
+await t('studio ubah nama PC (hanya owner)', false, () => setDoc(doc(studio, `organizations/${O}/settings/deviceNames`), { names: { pc_1: { name: 'x' } } }, { merge: true }));
 await t('studio catat folder bulan Drive', true, () => setDoc(doc(studio, `organizations/${O}/settings/driveFolders`), { months: { 'm1_2026-11': { folderId: 'f', rootId: 'r' } } }, { merge: true }));
 await t('studio klaim folder Drive booking', true, () => setDoc(doc(studio, `organizations/${O}/bookings/b1`), { driveFolderClaim: { machineId: 'pc', at: 1 } }, { merge: true }));
 await t('studio baca staff', true, () => getDocs(collection(studio, `organizations/${O}/staff`)));
@@ -147,6 +149,7 @@ await t('akun asing buat organisasi tanpa kode', false, () => setDoc(doc(strange
 await t('owner cari organisasinya (ownerId)', true, () => getDocs(query(collection(owner, 'organizations'), where('ownerId', '==', 'owner'))));
 await t('owner ubah harga paket', true, () => updateDoc(doc(owner, `organizations/${O}/packages/p1`), { price: 150 }));
 await t('owner ubah nota', true, () => setDoc(doc(owner, `organizations/${O}/settings/kasir`), { businessName: 'Z' }, { merge: true }));
+await t('owner atur nama PC', true, () => setDoc(doc(owner, `organizations/${O}/settings/deviceNames`), { names: { pc_1: { name: 'PC Kasir' } } }, { merge: true }));
 await t('owner atur folder induk Drive', true, () => setDoc(doc(owner, `organizations/${O}/settings/drive`), { rootFolders: { m1: { folderId: 'abc' } } }, { merge: true }));
 await t('owner daftar akun studio orgnya', true, () => getDocs(query(collection(owner, 'studioAccounts'), where('orgId', '==', O))));
 await t('owner tambah akun studio', true, () => setDoc(doc(owner, 'studioAccounts', 'cabang2@x.com'), { orgId: O, managerId: 'm2', name: 'Cabang 2', active: true, uid: null }));

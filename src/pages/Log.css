@@ -160,6 +160,10 @@
 
 /* ----- Rincian ----- */
 .log-detail-message { font-size: var(--fs-md); font-weight: var(--fw-medium); color: var(--text-primary); overflow-wrap: anywhere; }
+.log-explain-text { margin: 0; color: var(--text-primary); line-height: 1.5; }
+.log-explain-label { margin: 0 0 var(--space-1); font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-secondary); }
+.log-explain-gap { margin-top: var(--space-3); }
+.log-explain-good { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--success-subtle); color: var(--success); font-size: var(--fs-sm); }
 .log-check { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--fs-sm); }
 .log-check.is-checking { background: var(--bg-base); color: var(--text-secondary); }
 .log-check.is-match { background: var(--success-subtle); color: var(--success); }

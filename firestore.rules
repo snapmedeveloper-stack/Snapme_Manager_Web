@@ -181,11 +181,13 @@ service cloud.firestore {
       match /templates/{id} {
         allow read, write: if isMember(orgId) || isAdmin();
       }
-      // Template pesan WA boleh diubah Desktop; nota, absensi & folder induk Drive (drive) hanya owner.
+      // Template pesan WA boleh diubah Desktop; nota, absensi, folder induk Drive (drive) & nama PC (deviceNames) hanya
+      // owner.
       // driveFolders (catatan folder bulan & klaim pembuatannya) ditulis Desktop.
       match /settings/{id} {
         allow read: if isMember(orgId) || isAdmin();
-        allow write: if isOwner(orgId) || isAdmin() || (isStudio(orgId) && !(id in ['kasir', 'attendance', 'drive']));
+        allow write: if isOwner(orgId) || isAdmin()
+          || (isStudio(orgId) && !(id in ['kasir', 'attendance', 'drive', 'deviceNames']));
       }
 
       // Layanan & harga: hanya owner. Desktop boleh menyalakan timer ruangan dan mengurangi stok saat menjual.

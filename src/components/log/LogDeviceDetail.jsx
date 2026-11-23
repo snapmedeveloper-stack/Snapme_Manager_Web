@@ -1,16 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { CircleCheck, TriangleAlert } from 'lucide-react';
-import { Card, EmptyState, Spinner } from '../ui';
+import { CircleCheck, Pencil, TriangleAlert } from 'lucide-react';
+import { Button, Card, EmptyState, Spinner, useToast } from '../ui';
+import { writeInBackground } from '../../utils/firestoreWrite';
 import ActivityList from './ActivityList';
-import { useLogRange } from './useLogData';
+import DeviceNameForm from './DeviceNameForm';
+import { saveDeviceName, useLogRange } from './useLogData';
 import { buildActivityRows, deviceState, formatFull, latestVersionOf, periodRange, seqGaps, toMs } from './logModel';
 
 /**
  * Rincian satu PC: kondisi, kesinambungan log 7 hari (lompatan nomor urut = catatan yang hilang), dan aktivitas & error
- * dari PC ini saja.
+ * dari PC ini saja. Owner menentukan nama PC di sini (settings/deviceNames); Snap Me Desktop PC itu menyesuaikan.
  */
-export default function LogDeviceDetail({ orgId, devices, onOpenRow }) {
+export default function LogDeviceDetail({ orgId, user, devices, onOpenRow }) {
+  const toast = useToast();
+  const [renaming, setRenaming] = useState(false);
   const machineId = decodeURIComponent(useParams().machineId || '');
   const device = devices.find((d) => d.id === machineId);
   const week = useMemo(() => periodRange('7hari'), []);
@@ -29,11 +33,36 @@ export default function LogDeviceDetail({ orgId, devices, onOpenRow }) {
     );
   }
   const st = deviceState(device, { latestVersion: latestVersionOf(devices) });
+  // Nama dari owner belum dipakai PC (laporan terakhirnya masih nama lama), mis. PC sedang mati
+  const namePending = device.nameSet && device.reportedName !== device.machineName;
+
+  const handleRename = (name) => {
+    writeInBackground(
+      () => saveDeviceName(orgId, device.id, name, user),
+      (err) => toast.error('Gagal menyimpan nama PC', err.message, { persistent: true }),
+    );
+    toast.success('Nama PC disimpan', name);
+    setRenaming(false);
+  };
 
   return (
     <div className="page-body">
-      <Card title={device.machineName || device.id} description={`Versi ${device.appVersion} · ${device.studioEmail}`}>
+      <Card
+        title={device.machineName || device.id}
+        description={`Versi ${device.appVersion} · ${device.studioEmail}`}
+        actions={
+          <Button size="sm" icon={Pencil} onClick={() => setRenaming(true)}>
+            Ubah nama
+          </Button>
+        }
+      >
         <dl className="log-fields">
+          {namePending && (
+            <div className="log-field">
+              <dt>Nama</dt>
+              <dd>Menunggu PC memakai nama baru (masih &quot;{device.reportedName}&quot;; berlaku begitu PC online)</dd>
+            </div>
+          )}
           <div className="log-field">
             <dt>Status</dt>
             <dd>
@@ -116,6 +145,7 @@ export default function LogDeviceDetail({ orgId, devices, onOpenRow }) {
           <ActivityList rows={rows} onOpen={onOpenRow} />
         )}
       </Card>
+      {renaming && <DeviceNameForm device={device} onSave={handleRename} onClose={() => setRenaming(false)} />}
     </div>
   );
 }

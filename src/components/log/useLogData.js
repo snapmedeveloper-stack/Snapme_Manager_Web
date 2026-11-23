@@ -2,6 +2,7 @@
 // rentang waktu atau jumlah karena log aktivitas bisa ribuan per bulan.
 import { useEffect, useMemo, useState } from 'react';
 import {
+  FieldPath,
   Timestamp,
   collection,
   doc,
@@ -34,25 +35,74 @@ const logsCol = (orgId) => collection(db, 'organizations', orgId, 'appLogs');
 const withId = (d) => ({ id: d.id, ...d.data() });
 const ERROR_WINDOW = 500;
 
-/** Kondisi semua PC (devices), urut nama. */
+/** Nama PC maksimal (sama dengan Snapme_Desktop electron/machineIdentity.js). */
+export const DEVICE_NAME_MAX = 40;
+export const cleanDeviceName = (name) =>
+  String(name || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, DEVICE_NAME_MAX);
+
+/**
+ * settings/deviceNames.names[machineId] = { name, updatedAt, updatedBy }: nama PC yang ditentukan owner. Snap Me Desktop
+ * di PC itu menerapkannya sendiri (nama PC, nama server WhatsApp, dan nama di log berikutnya).
+ */
+const deviceNamesRef = (orgId) => doc(db, 'organizations', orgId, 'settings', 'deviceNames');
+
+export const saveDeviceName = (orgId, machineId, name, user) =>
+  setDoc(
+    deviceNamesRef(orgId),
+    {
+      names: {
+        [machineId]: { name: cleanDeviceName(name), updatedAt: serverTimestamp(), updatedBy: user?.email || '-' },
+      },
+    },
+    { mergeFields: [new FieldPath('names', machineId)] },
+  );
+
+/**
+ * Gabungkan kondisi PC dengan nama dari owner: machineName = nama dari owner (bila ada), reportedName = nama yang
+ * terakhir dilaporkan PC itu (berbeda = PC belum menerapkan, mis. sedang offline), nameSet = nama sudah diatur owner.
+ */
+export function mergeDeviceNames(devices, names = {}) {
+  return devices
+    .map((d) => {
+      const own = cleanDeviceName(names[d.id]?.name);
+      return { ...d, reportedName: d.machineName, machineName: own || d.machineName, nameSet: !!own };
+    })
+    .sort((a, b) => String(a.machineName).localeCompare(String(b.machineName)));
+}
+
+/** Kondisi semua PC (devices) dengan nama dari owner, urut nama. */
 export function useDevices(orgId) {
-  const [state, setState] = useState({ devices: [], loading: true });
+  const [state, setState] = useState({ key: null, docs: [], loading: true });
+  const [names, setNames] = useState({ key: null, value: {} });
   useEffect(() => {
     if (!orgId) return undefined;
-    return onSnapshot(
+    const offDevices = onSnapshot(
       collection(db, 'organizations', orgId, 'devices'),
-      (snap) =>
-        setState({
-          devices: snap.docs.map(withId).sort((a, b) => String(a.machineName).localeCompare(String(b.machineName))),
-          loading: false,
-        }),
+      (snap) => setState({ key: orgId, docs: snap.docs.map(withId), loading: false }),
       (err) => {
         console.error('[Log] Gagal memuat perangkat', err);
-        setState({ devices: [], loading: false, error: err.message });
+        setState({ key: orgId, docs: [], loading: false, error: err.message });
       },
     );
+    const offNames = onSnapshot(
+      deviceNamesRef(orgId),
+      (snap) => setNames({ key: orgId, value: snap.data()?.names || {} }),
+      (err) => console.error('[Log] Gagal memuat nama perangkat', err),
+    );
+    return () => {
+      offDevices();
+      offNames();
+    };
   }, [orgId]);
-  return state;
+  const current = state.key === orgId ? state : { docs: [], loading: true };
+  const devices = useMemo(
+    () => mergeDeviceNames(current.docs, names.key === orgId ? names.value : {}),
+    [current.docs, names, orgId],
+  );
+  return { devices, loading: current.loading, error: current.error };
 }
 
 /** Status "sudah ditangani" per sidik jari: { [fingerprint]: { resolvedAt, resolvedBy } }. */

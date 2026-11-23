@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { CircleCheck, ClipboardCopy, Undo2 } from 'lucide-react';
+import { CircleCheck, ClipboardCopy, Lightbulb, Undo2 } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Spinner, useToast } from '../ui';
-import { lastActionsBefore, reopenIssue, resolveIssue, useFingerprintDocs } from './useLogData';
-import { contextRows, developerReport, formatClock, formatFull, groupErrors, toMs } from './logModel';
+import { lastActionsBefore, reopenIssue, resolveIssue, useFingerprintDocs, useSubjectTimeline } from './useLogData';
+import { contextRows, deliveredAfter, developerReport, formatClock, formatFull, groupErrors, toMs } from './logModel';
 
 /** Jumlah kejadian per hari selama 7 hari terakhir (grafik kecil). */
 function dailyCounts(docs, now = Date.now()) {
@@ -19,8 +19,9 @@ function dailyCounts(docs, now = Date.now()) {
 }
 
 /**
- * Rincian satu masalah (§7.2.4): penjelasan, kapan saja terjadi, aksi terakhir di PC sebelum error, detail teknis,
- * salin untuk developer, dan tandai sudah ditangani.
+ * Rincian satu masalah (§7.2.4): penjelasan sehari-hari (apa artinya & yang perlu dilakukan, errorExplain.js), kapan
+ * saja terjadi, aksi terakhir di PC sebelum error, detail teknis, salin untuk developer, dan tandai sudah ditangani.
+ * Kirim WhatsApp yang bermasalah dicek apakah akhirnya tetap mendapat centang.
  */
 export default function LogErrorDetail({ orgId, user, issues }) {
   const toast = useToast();
@@ -31,6 +32,9 @@ export default function LogErrorDetail({ orgId, user, issues }) {
     () => [...docs].sort((a, b) => (toMs(b.lastAt) ?? 0) - (toMs(a.lastAt) ?? 0))[0] || null,
     [docs],
   );
+  const waSubjectId = latest?.event === 'wa.send_problem' ? latest.subject?.id : null;
+  const subjectTimeline = useSubjectTimeline(orgId, waSubjectId);
+  const delivered = waSubjectId ? deliveredAfter(latest, subjectTimeline.docs) : null;
   const [lastActions, setLastActions] = useState({ key: null, docs: [] });
   const actionsKey = latest ? `${latest.machineId}|${toMs(latest.lastAt)}` : null;
 
@@ -89,7 +93,7 @@ export default function LogErrorDetail({ orgId, user, issues }) {
     <div className="page-body">
       <Card>
         <div className="form-stack">
-          <p className="log-detail-message">{group.message}</p>
+          <p className="log-detail-message">{group.explain.title}</p>
           <div className="log-row-badges">
             <Badge tone={group.level === 'error' ? 'danger' : 'warning'}>
               {group.level === 'error' ? 'Error' : 'Peringatan'}
@@ -113,6 +117,29 @@ export default function LogErrorDetail({ orgId, user, issues }) {
             >
               {group.status === 'resolved' ? 'Batalkan tanda ditangani' : 'Tandai sudah ditangani'}
             </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        title={
+          <>
+            <Lightbulb size={16} aria-hidden="true" /> Apa artinya
+          </>
+        }
+      >
+        <div className="form-stack">
+          <p className="log-explain-text">{group.explain.meaning}</p>
+          {delivered && (
+            <p className="log-explain-good">
+              Kabar baik: pesan terakhir ini akhirnya{' '}
+              {delivered.ack >= 2 ? 'diterima HP customer (✓✓)' : 'terkirim (✓)'} pukul {formatClock(delivered.at)}.
+              Aman ditandai sudah ditangani.
+            </p>
+          )}
+          <div>
+            <p className="log-explain-label">Yang perlu dilakukan</p>
+            <p className="log-explain-text">{group.explain.action}</p>
           </div>
         </div>
       </Card>
@@ -160,6 +187,10 @@ export default function LogErrorDetail({ orgId, user, issues }) {
 
       <Card title="Detail teknis">
         <dl className="log-fields">
+          <div className="log-field">
+            <dt>Pesan asli</dt>
+            <dd>{group.message}</dd>
+          </div>
           <div className="log-field">
             <dt>Error asli</dt>
             <dd>{latest?.context?.error || '-'}</dd>

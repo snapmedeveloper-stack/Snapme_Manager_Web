@@ -6,7 +6,8 @@ import { formatClock } from './logModel';
 import { markErrorsSeen } from './useLogData';
 
 /**
- * Error (§7.2.4): satu kartu per masalah (sidik jari), bukan banjir baris. Tab Belum ditangani / Sudah ditangani;
+ * Error (§7.2.4): satu kartu per masalah (sidik jari), bukan banjir baris. Judul = penjelasan sehari-hari
+ * (errorExplain.js), pesan asli di bawahnya. Tab Belum ditangani / Sudah ditangani;
  * masalah yang muncul lagi setelah ditandai kembali ke Belum ditangani dengan label "Muncul lagi".
  * Selama halaman ini terbuka, error yang tampil dianggap sudah dilihat (tanda di menu Profil hilang).
  */
@@ -50,7 +51,8 @@ export default function LogErrors({ orgId, groups, loading, error }) {
                 <Link to={encodeURIComponent(g.fingerprint)} className={`log-error-card is-${g.level}`}>
                   <Icon size={18} aria-hidden="true" className="log-error-icon" />
                   <span className="log-error-main">
-                    <span className="log-error-title">{g.message}</span>
+                    <span className="log-error-title">{g.explain.title}</span>
+                    {g.explain.title !== g.message && <span className="log-row-meta">{g.message}</span>}
                     <span className="log-row-badges">
                       {g.count > 1 && <Badge tone={g.level === 'error' ? 'danger' : 'warning'}>×{g.count}</Badge>}
                       {g.status === 'reopened' && <Badge tone="danger">Muncul lagi</Badge>}
