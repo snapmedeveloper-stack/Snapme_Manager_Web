@@ -1,8 +1,20 @@
-import { Banknote, ChevronDown, CircleCheck, Landmark, MessageCircle, Package, Printer, RotateCcw, Trash2 } from 'lucide-react';
+import {
+  Banknote,
+  ChevronDown,
+  CircleCheck,
+  Landmark,
+  MessageCircle,
+  Package,
+  Pencil,
+  Printer,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 import { Badge, Button } from '../ui';
 import { STATUS_TONE } from '../../constants/status';
 import { formatRupiah } from '../../utils/format';
 import { PAYMENT_LABEL, getStageInfo } from '../../utils/transactions';
+import { isCustomTransaction } from './customTransaction';
 
 const formatDateTime = (ts) =>
   ts?.toMillis
@@ -44,11 +56,22 @@ function ItemThumb({ item }) {
 
 /**
  * Satu transaksi (kartu, versi HP dari TransactionRow Snapme_Desktop): ringkasan, dan bila dibuka: item, pembayaran,
- * cetak nota, chat WA (wa.me, karena Manager tidak punya halaman Message), hapus/pulihkan.
+ * cetak nota, chat WA (wa.me, karena Manager tidak punya halaman Message), hapus/pulihkan. Transaksi custom: badge
+ * Custom, rincian fee per staff & catatan, dan tombol Ubah (onEdit, hanya owner).
  */
-export default function TransactionCard({ tx, booking, isPhotobooth, expanded, onToggle, onPrint, onToggleDeleted }) {
+export default function TransactionCard({
+  tx,
+  booking,
+  isPhotobooth,
+  expanded,
+  onToggle,
+  onPrint,
+  onToggleDeleted,
+  onEdit,
+}) {
   const PaymentIcon = tx.paymentMethod === 'transfer' ? Landmark : Banknote;
   const chat = waLink(booking?.waNumber || booking?.customerPhone);
+  const isCustom = isCustomTransaction(tx);
 
   return (
     <article className={`trx-card${expanded ? ' is-expanded' : ''}${tx.isDeleted ? ' is-deleted' : ''}`}>
@@ -59,7 +82,7 @@ export default function TransactionCard({ tx, booking, isPhotobooth, expanded, o
             {formatDateTime(tx.createdAt)} · {tx.transactionNumber}
           </span>
           <span className="trx-card-badges">
-            <StageBadge info={getStageInfo(booking, isPhotobooth)} />
+            {isCustom ? <Badge tone="accent">Custom</Badge> : <StageBadge info={getStageInfo(booking, isPhotobooth)} />}
             {isPhotobooth && <Badge tone="neutral">Photobooth</Badge>}
             {tx.isDeleted && <Badge tone="danger">Dihapus</Badge>}
           </span>
@@ -104,7 +127,30 @@ export default function TransactionCard({ tx, booking, isPhotobooth, expanded, o
               <dd className="num">{formatRupiah(tx.change)}</dd>
             </div>
           </dl>
+          {isCustom && (
+            <div className="trx-custom-detail">
+              <span className="form-label">Fee staff</span>
+              {tx.handlers?.length ? (
+                <ul className="trx-fee-summary">
+                  {tx.handlers.map((h) => (
+                    <li key={h.staffId}>
+                      <span>{h.name}</span>
+                      <span className="num">{formatRupiah(h.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="form-hint">Tanpa fee</p>
+              )}
+              {tx.note && <p className="trx-custom-note">{tx.note}</p>}
+            </div>
+          )}
           <div className="trx-card-actions">
+            {isCustom && onEdit && !tx.isDeleted && (
+              <Button icon={Pencil} onClick={() => onEdit(tx)}>
+                Ubah
+              </Button>
+            )}
             <Button icon={Printer} onClick={() => onPrint(tx)}>
               Cetak nota
             </Button>

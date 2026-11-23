@@ -30,9 +30,15 @@ export function splitFee(total, count) {
   return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
 }
 
-/** Bagian fee tiap penanggung jawab transaksi: [{ staffId, name, amount }]. */
+/**
+ * Bagian fee tiap penanggung jawab transaksi: [{ staffId, name, amount }]. Transaksi custom Snapme Manager menyimpan
+ * nominal per staff (handlers[].amount, boleh berbeda); transaksi Kasir dibagi rata dari fee transaksi.
+ */
 export function handlerShares(tx, packages) {
   const handlers = tx.handlers || [];
+  if (handlers.length && handlers.every((h) => Number.isFinite(h.amount))) {
+    return handlers.map((h) => ({ ...h, amount: Math.max(0, Math.round(h.amount)) }));
+  }
   const amounts = splitFee(transactionFee(tx, packages), handlers.length);
   return handlers.map((h, i) => ({ ...h, amount: amounts[i] }));
 }

@@ -95,18 +95,21 @@ export default function PayslipSheet({
                     <span className="tim-row-title">{tx.customerName || 'Tanpa nama'}</span>
                     <span className="tim-row-meta">
                       <span className="num">{formatDateTime(tx.createdAt)}</span> · {packageNamesOf(tx, packages)}
-                      {shareCount > 1 && ` · dibagi ${shareCount}`}
+                      {shareCount > 1 && tx.kind !== 'custom' && ` · dibagi ${shareCount}`}
                     </span>
                   </span>
                   <span className="num tim-pay-amount">{formatRupiah(amount)}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    iconOnly
-                    icon={Pencil}
-                    aria-label={`Ubah penanggung jawab ${tx.customerName || 'transaksi'}`}
-                    onClick={() => onEditHandlers(tx)}
-                  />
+                  {/* Fee transaksi custom diubah di halaman Transaksi (nominal per staff) */}
+                  {tx.kind !== 'custom' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      icon={Pencil}
+                      aria-label={`Ubah penanggung jawab ${tx.customerName || 'transaksi'}`}
+                      onClick={() => onEditHandlers(tx)}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

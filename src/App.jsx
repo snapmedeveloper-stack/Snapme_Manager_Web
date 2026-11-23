@@ -214,7 +214,10 @@ function App() {
               <Suspense fallback={pageFallback}>
                 <Routes>
                   <Route path="/timeline" element={<Timeline {...session} />} />
-                  <Route path="/transaksi" element={<Transaksi {...session} />} />
+                  <Route
+                    path="/transaksi"
+                    element={<Transaksi {...session} {...branchProps} canManage={canManage} />}
+                  />
                   {canManage && <Route path="/layanan" element={<Layanan {...session} />} />}
                   {canManage && <Route path="/tim" element={<Tim {...session} {...branchProps} studio={studio} />} />}
                   <Route

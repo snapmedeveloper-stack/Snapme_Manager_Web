@@ -22,6 +22,7 @@ const toMillis = (ts) => (ts?.toMillis ? ts.toMillis() : 0);
 
 /** Nama paket di transaksi (untuk rincian fee). */
 export const packageNamesOf = (tx, packages) => {
+  if (tx.kind === 'custom') return 'Transaksi custom';
   const ids = new Set(packages.map((p) => p.id));
   return (tx.items || [])
     .filter((item) => ids.has(item.id))

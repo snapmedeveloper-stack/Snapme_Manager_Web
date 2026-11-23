@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { CircleAlert, FileDown, Receipt, Search, Trash2, X } from 'lucide-react';
+import { Timestamp, addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { CircleAlert, FileDown, Plus, Receipt, Search, Trash2, X } from 'lucide-react';
 import { db } from '../firebase';
 import { Button, EmptyState, Select, Spinner, Tabs, useConfirm, useToast } from '../components/ui';
 import AppBar from '../components/layout/AppBar';
 import TransactionSummary from '../components/transaksi/TransactionSummary';
 import TransactionCard from '../components/transaksi/TransactionCard';
 import BusyChart from '../components/transaksi/BusyChart';
+import CustomTransactionForm from '../components/transaksi/CustomTransactionForm';
+import { createdAtFor } from '../components/transaksi/customTransaction';
 import { PERIODS, periodLabel, periodRange } from '../components/transaksi/periods';
 import { printReceipt } from '../components/transaksi/printReceipt';
 import { shareReport } from '../components/transaksi/shareReport';
@@ -30,8 +32,9 @@ const SINGLE_DAY = ['today', 'yesterday', 'day_before'];
  * Transaksi: rekap & daftar transaksi per periode. Data, rekap, dan tahap booking sama dengan Snapme_Desktop
  * (hooks/useTransaksiData, utils/transactions). Tambahan Manager: periode lebih lengkap, grafik waktu sibuk,
  * laporan PDF (Cloud Function), serta pencarian & filter paket (ikut menyaring rekap, seperti filter jenis layanan).
+ * Owner (canManage) bisa menambah/mengubah transaksi custom (components/transaksi/customTransaction.js).
  */
-export default function Transaksi({ user, orgId, userMeta }) {
+export default function Transaksi({ user, orgId, userMeta, managerId, branches = [], canManage = false }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [period, setPeriod] = useState('today');
@@ -42,6 +45,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
   const [packageId, setPackageId] = useState(''); // '' = semua paket
   const [expandedId, setExpandedId] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [customForm, setCustomForm] = useState(null); // null = tertutup, { tx } (tx null = transaksi baru)
 
   const range = useMemo(() => periodRange(period, custom), [period, custom]);
   const { transactions, bookings, loading, error } = useTransactions(orgId, range.startDate, range.endDate);
@@ -107,6 +111,35 @@ export default function Transaksi({ user, orgId, userMeta }) {
     }
   };
 
+  const handleSaveCustom = async (fields, date) => {
+    const editing = customForm?.tx;
+    const createdAt = Timestamp.fromDate(createdAtFor(date, new Date(), editing?.createdAt?.toDate?.() || null));
+    try {
+      if (editing) {
+        await updateDoc(doc(db, 'organizations', orgId, 'transactions', editing.id), {
+          ...fields,
+          createdAt,
+          updatedAt: serverTimestamp(),
+          updatedBy: user.email,
+        });
+      } else {
+        await addDoc(collection(db, 'organizations', orgId, 'transactions'), {
+          ...fields,
+          transactionNumber: `TRX-${Date.now()}`,
+          createdAt,
+          createdBy: user.uid,
+          createdByEmail: user.email,
+        });
+      }
+      const when = createdAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      toast.success(editing ? 'Transaksi custom diubah' : 'Transaksi custom disimpan', `${fields.customerName} · ${when}`);
+      setCustomForm(null);
+    } catch (err) {
+      console.error('[Transaksi] Gagal menyimpan transaksi custom', err);
+      toast.error('Gagal menyimpan transaksi custom', err.message);
+    }
+  };
+
   const handleShare = async () => {
     setIsSharing(true);
     try {
@@ -124,9 +157,16 @@ export default function Transaksi({ user, orgId, userMeta }) {
       <AppBar
         title="Transaksi"
         actions={
-          <Button variant="ghost" size="sm" icon={FileDown} loading={isSharing} onClick={handleShare}>
-            Laporan
-          </Button>
+          <>
+            {canManage && (
+              <Button variant="ghost" size="sm" icon={Plus} onClick={() => setCustomForm({ tx: null })}>
+                Tambah
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" icon={FileDown} loading={isSharing} onClick={handleShare}>
+              Laporan
+            </Button>
+          </>
         }
       />
 
@@ -240,6 +280,7 @@ export default function Transaksi({ user, orgId, userMeta }) {
                     onToggle={() => setExpandedId(expandedId === tx.id ? null : tx.id)}
                     onPrint={handlePrint}
                     onToggleDeleted={handleToggleDeleted}
+                    onEdit={canManage ? (t) => setCustomForm({ tx: t }) : undefined}
                   />
                 ))}
               </div>
@@ -247,6 +288,17 @@ export default function Transaksi({ user, orgId, userMeta }) {
           </>
         )}
       </div>
+
+      {customForm && (
+        <CustomTransactionForm
+          orgId={orgId}
+          tx={customForm.tx}
+          branches={branches}
+          managerId={managerId}
+          onSave={handleSaveCustom}
+          onClose={() => setCustomForm(null)}
+        />
+      )}
     </>
   );
 }
