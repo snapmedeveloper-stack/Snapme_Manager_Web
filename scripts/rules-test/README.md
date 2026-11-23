@@ -16,4 +16,4 @@ Syarat:
 
 Hasilnya harus `Semua uji rules LULUS`. Skenario baru ditambahkan di berkas `*.test.mjs` yang sesuai.
 
-**Deploy rules Firestore:** `firebase deploy --only firestore:rules` (firebase-tools 15.3.1) melaporkan sukses tetapi **tidak memasang apa pun** untuk database bernama `default`. Pasang lewat Firebase Console (Firestore → database `default` → Rules), atau lewat Rules API (lihat `Snapme_Desktop/docs/RENCANA_TANPA_ROLE.md`), lalu cocokkan isi rules yang aktif.
+**Deploy rules Firestore:** `firebase deploy --only firestore:default:rules` (teruji 2026-11-24, firebase-tools 15.3.1; ikut memasang indeks `firestore.indexes.json` tanpa menghapus indeks lain). Jangan pakai `--only firestore:rules`: melaporkan sukses tetapi **tidak memasang apa pun** untuk database bernama `default`.
