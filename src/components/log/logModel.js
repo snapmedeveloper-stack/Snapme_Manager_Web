@@ -516,7 +516,8 @@ export function crossCheckFor(doc) {
       expect: 'missing',
     };
   }
-  if (doc.event === 'kasir.transaction_created' && doc.context?.trxDocId) {
+  const isTrxEvent = ['kasir.transaction_created', 'kasir.deposit_created', 'bot.deposit_created'].includes(doc.event);
+  if (isTrxEvent && doc.context?.trxDocId) {
     return {
       label: 'Transaksi tersimpan di daftar transaksi',
       mismatch: 'Tidak cocok: transaksi ini tidak ditemukan di daftar transaksi',

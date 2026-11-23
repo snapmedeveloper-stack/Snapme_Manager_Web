@@ -39,6 +39,7 @@ export function printReceipt(tx, { user, userMeta, kasirSettings }) {
   ${settings.address ? `<div class="center">${escapeHtml(settings.address)}</div>` : ''}
   ${settings.phone ? `<div class="center">Telp: ${escapeHtml(settings.phone)}</div>` : ''}
   <div class="divider"></div>
+  ${data.receiptTitle ? `<div class="center bold" style="font-size:14px;margin-bottom:6px">${escapeHtml(data.receiptTitle)}</div>` : ''}
   ${row('No', data.transactionNumber || data.id)}
   ${row('Tgl', data.date)}
   ${row('Kasir', data.kasirName)}
@@ -51,6 +52,7 @@ export function printReceipt(tx, { user, userMeta, kasirSettings }) {
   ${row('Metode', PAYMENT_LABEL[data.paymentMethod] || data.paymentMethod || '-')}
   ${row('Dibayar', formatRupiah(data.amountPaid))}
   ${row('Kembali', formatRupiah(data.change))}
+  ${data.summaryRows.map((r, i) => row(r.label, formatRupiah(r.value), i === data.summaryRows.length - 1)).join('')}
   <div class="divider"></div>
   <div class="center">${escapeHtml(settings.footerNote)}</div>
 </body></html>`;

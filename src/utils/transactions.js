@@ -2,6 +2,7 @@
 // Perhitungan murni halaman Transaksi (tanpa React): tahap booking dan rekap pendapatan.
 
 import { bookingStage, PHOTOBOOTH_STAGES, STUDIO_STAGES, stageLabel } from './bookingStage';
+import { isDepositItem, isDepositTransaction } from './deposit';
 
 export const PAYMENT_LABEL = { cash: 'Tunai', transfer: 'Transfer' };
 
@@ -22,6 +23,8 @@ export function getStageInfo(booking, isPhotobooth) {
 /**
  * Rekap transaksi (yang sudah difilter): pendapatan, jumlah, metode bayar, dan pendapatan per kategori item.
  * Kategori ditebak dari katalog: paket, item tambahan, cetak (id "cetak_…" atau template), sisanya "lainnya".
+ * DP (utils/deposit.js): uangnya masuk pendapatan di hari diterima, kategori "dp" (positif saat diterima, negatif
+ * saat dipotong di pelunasan); transaksi DP tidak dihitung sebagai jumlah transaksi / booking / rata-rata.
  */
 export function summarizeTransactions(transactions, { packages, addOns, templates }) {
   const packageIds = new Set(packages.map((p) => p.id));
@@ -33,13 +36,17 @@ export function summarizeTransactions(transactions, { packages, addOns, template
     bookingCount: 0,
     cash: 0,
     transfer: 0,
-    byCategory: { paket: 0, tambahan: 0, cetak: 0, lainnya: 0 },
+    byCategory: { paket: 0, tambahan: 0, cetak: 0, lainnya: 0, dp: 0 },
+    depositCount: 0,
   };
 
   for (const tx of transactions) {
     const txTotal = tx.total || 0;
-    summary.count += 1;
-    if (tx.bookingId) summary.bookingCount += 1;
+    if (isDepositTransaction(tx)) summary.depositCount += 1;
+    else {
+      summary.count += 1;
+      if (tx.bookingId) summary.bookingCount += 1;
+    }
     summary.revenue += txTotal;
     if (tx.paymentMethod === 'transfer') summary.transfer += txTotal;
     else summary.cash += txTotal;
@@ -47,7 +54,8 @@ export function summarizeTransactions(transactions, { packages, addOns, template
     for (const item of tx.items || []) {
       const itemTotal = (item.price || 0) * (item.qty || 1);
       let category = 'lainnya';
-      if (packageIds.has(item.id)) category = 'paket';
+      if (isDepositItem(item)) category = 'dp';
+      else if (packageIds.has(item.id)) category = 'paket';
       else if (addOnIds.has(item.id)) category = 'tambahan';
       else if (item.id.startsWith('cetak_') || templateIds.has(item.id)) category = 'cetak';
       summary.byCategory[category] += itemTotal;

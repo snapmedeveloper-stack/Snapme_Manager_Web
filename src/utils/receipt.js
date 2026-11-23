@@ -1,5 +1,6 @@
 // Salinan Snapme_Desktop/src/utils/receipt.js: ubah keduanya bersamaan.
 // Data nota (Desktop: window.electronAPI.generateReceiptPdf; Manager: jendela cetak browser).
+import { depositReceiptRows, isDepositTransaction } from './deposit';
 
 /** Pengaturan nota dengan nilai bawaan bila belum diisi di Setting. */
 export const receiptSettings = (kasirSettings = {}) => ({
@@ -23,11 +24,16 @@ export const formatReceiptDate = (millis) =>
     minute: '2-digit',
   });
 
-/** Data transaksi + kelengkapan nota. Nama folder nota mengikuti tanggal booking bila ada. */
+/**
+ * Data transaksi + kelengkapan nota. Nama folder nota mengikuti tanggal booking bila ada.
+ * Nota DP: receiptTitle "NOTA DP" + summaryRows (total pesanan, sisa bayar) di bawah total.
+ */
 export const buildReceiptData = (tx, { date, kasirName, kasirSettings }) => ({
   ...tx,
   date,
   kasirName,
   folderName: tx.bookingDate ? `${tx.customerName} - ${tx.bookingDate}` : tx.customerName,
+  receiptTitle: isDepositTransaction(tx) ? 'NOTA DP' : '',
+  summaryRows: depositReceiptRows(tx),
   settings: receiptSettings(kasirSettings),
 });

@@ -2,7 +2,11 @@
 // Format angka & tanggal yang dipakai lintas halaman. Cari di sini dulu sebelum menulis helper baru.
 
 /** 125000 → "Rp 125.000". Nilai kosong/bukan angka → "Rp 0". */
-export const formatRupiah = (amount) => `Rp ${(Number(amount) || 0).toLocaleString('id-ID')}`;
+export const formatRupiah = (amount) => {
+  const value = Number(amount) || 0;
+  // Nominal negatif (baris "Potong DP") ditulis "-Rp 50.000"
+  return `${value < 0 ? '-' : ''}Rp ${Math.abs(value).toLocaleString('id-ID')}`;
+};
 
 /** Tanggal kalender lokal "YYYY-MM-DD" (format field `date` di booking). Menerima Date, timestamp ms, atau string tanggal. */
 export const getLocalDateString = (date) => {

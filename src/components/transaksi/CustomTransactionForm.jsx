@@ -3,9 +3,12 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Button, Modal, MoneyInput, Select, Switch, Tabs } from '../ui';
 import { formatRupiah, getLocalDateString } from '../../utils/format';
+import { depositNumber } from '../../utils/deposit';
 import {
   MAX_NAME,
   MAX_NOTE,
+  customDepositError,
+  customDepositFields,
   customTransactionError,
   customTransactionFields,
   draftOf,
@@ -16,6 +19,10 @@ import {
 const PAYMENTS = [
   { value: 'cash', label: 'Tunai' },
   { value: 'transfer', label: 'Transfer' },
+];
+const PAY_MODES = [
+  { value: 'full', label: 'Lunas' },
+  { value: 'dp', label: 'DP' },
 ];
 
 /** Staff organisasi (realtime), urut nama. */
@@ -41,14 +48,17 @@ function useOrgStaff(orgId) {
 /**
  * Tambah / ubah transaksi custom (lihat customTransaction.js): nama, tanggal, total harga, metode bayar, catatan, dan
  * fee per staff cabang terpilih. Memilih staff membagi total fee rata; nominal tiap staff boleh diubah (total fee lalu
- * mengikuti jumlahnya). tx = transaksi yang diubah (null = baru). onSave(fields, createdAt) → Promise.
+ * mengikuti jumlahnya). tx = transaksi yang diubah (null = baru). settle = transaksi DP custom yang dilunasi (isian
+ * dari rencananya, DP dipotong). Transaksi baru boleh disimpan sebagai DP (Snapme_Desktop/docs/RENCANA_DP.md §4.3).
+ * onSave({ kind: 'custom' | 'dp', fields }, tanggal) → Promise.
  */
-export default function CustomTransactionForm({ orgId, tx, branches, managerId, onSave, onClose }) {
+export default function CustomTransactionForm({ orgId, tx, settle = null, branches, managerId, onSave, onClose }) {
   const formId = useId();
   const staff = useOrgStaff(orgId);
   const today = getLocalDateString(new Date());
   const defaultBranch = branches.some((b) => b.managerId === managerId) ? managerId : branches[0]?.managerId || null;
-  const [draft, setDraft] = useState(() => draftOf(tx, { today, managerId: defaultBranch }));
+  const [draft, setDraft] = useState(() => draftOf(tx, { today, managerId: defaultBranch, settle }));
+  const [payMode, setPayMode] = useState('full'); // hanya transaksi baru: 'full' | 'dp'
   const [totalFee, setTotalFee] = useState(() => String(sharesTotal(draft.shares) || ''));
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,7 +76,9 @@ export default function CustomTransactionForm({ orgId, tx, branches, managerId, 
   );
   const selectedIds = options.filter((s) => draft.shares[s.id] !== undefined).map((s) => s.id);
   const feeSum = sharesTotal(draft.shares);
-  const error = customTransactionError(draft);
+  const isDeposit = !tx && !settle && payMode === 'dp';
+  const error = isDeposit ? customDepositError(draft) : customTransactionError(draft);
+  const deducted = Math.min(Number(draft.total) || 0, draft.deduction?.amount || 0);
 
   const toggleStaff = (staffId, on) => {
     const ids = options.map((s) => s.id).filter((id) => (id === staffId ? on : draft.shares[id] !== undefined));
@@ -93,7 +105,12 @@ export default function CustomTransactionForm({ orgId, tx, branches, managerId, 
     if (error || saving) return;
     setSaving(true);
     try {
-      await onSave(customTransactionFields(draft, staff || []), draft.date);
+      await onSave(
+        isDeposit
+          ? { kind: 'dp', fields: customDepositFields(draft, staff || [], depositNumber()) }
+          : { kind: 'custom', fields: customTransactionFields(draft, staff || []) },
+        draft.date,
+      );
     } finally {
       setSaving(false);
     }
@@ -103,7 +120,7 @@ export default function CustomTransactionForm({ orgId, tx, branches, managerId, 
     <Modal
       open
       size="md"
-      title={tx ? 'Ubah transaksi custom' : 'Transaksi custom'}
+      title={settle ? 'Lunasi transaksi custom' : tx ? 'Ubah transaksi custom' : 'Transaksi custom'}
       onClose={saving ? undefined : onClose}
       footer={
         <>
@@ -118,8 +135,13 @@ export default function CustomTransactionForm({ orgId, tx, branches, managerId, 
     >
       <form id={formId} className="form-stack" onSubmit={handleSubmit} noValidate>
         <p className="form-hint">
-          Masuk ke rekap pendapatan, dan fee masuk ke gaji staff bulan transaksi. Tidak tampil di Snap Me Desktop.
+          {isDeposit
+            ? 'DP masuk rekap pendapatan hari ini. Fee staff baru masuk gaji saat transaksi dilunasi.'
+            : 'Masuk ke rekap pendapatan, dan fee masuk ke gaji staff bulan transaksi. Tidak tampil di Snap Me Desktop.'}
         </p>
+        {!tx && !settle && (
+          <Tabs options={PAY_MODES} value={payMode} onChange={setPayMode} ariaLabel="Jenis pembayaran" />
+        )}
         <div className="form-group">
           <label htmlFor={`${formId}-name`}>Nama transaksi</label>
           <input
@@ -148,8 +170,32 @@ export default function CustomTransactionForm({ orgId, tx, branches, managerId, 
             <MoneyInput id={`${formId}-total`} value={draft.total} onChange={(v) => set('total', v)} />
           </div>
         </div>
+        {isDeposit && (
+          <div className="form-group">
+            <label htmlFor={`${formId}-deposit`}>DP diterima</label>
+            <MoneyInput id={`${formId}-deposit`} value={draft.deposit} onChange={(v) => set('deposit', v)} />
+            <span className="form-hint">
+              Sisa dibayar saat pelunasan:{' '}
+              <span className="num">
+                {formatRupiah(Math.max(0, (Number(draft.total) || 0) - (Number(draft.deposit) || 0)))}
+              </span>
+            </span>
+          </div>
+        )}
+        {deducted > 0 && (
+          <dl className="trx-deposit-sum">
+            <div>
+              <dt>Potong DP</dt>
+              <dd className="num">{formatRupiah(-deducted)}</dd>
+            </div>
+            <div className="is-strong">
+              <dt>Dibayar sekarang</dt>
+              <dd className="num">{formatRupiah((Number(draft.total) || 0) - deducted)}</dd>
+            </div>
+          </dl>
+        )}
         <div className="form-group">
-          <span className="form-label">Metode bayar</span>
+          <span className="form-label">{isDeposit ? 'Metode bayar DP' : 'Metode bayar'}</span>
           <Tabs
             options={PAYMENTS}
             value={draft.paymentMethod}

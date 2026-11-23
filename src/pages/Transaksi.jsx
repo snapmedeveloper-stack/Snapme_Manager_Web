@@ -1,5 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Timestamp, addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import {
+  Timestamp,
+  arrayUnion,
+  collection,
+  deleteField,
+  doc,
+  getDoc,
+  serverTimestamp,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import { CircleAlert, FileDown, Plus, Receipt, Search, Trash2, X } from 'lucide-react';
 import { db } from '../firebase';
 import { Button, EmptyState, Select, Spinner, Tabs, useConfirm, useToast } from '../components/ui';
@@ -15,6 +25,8 @@ import { shareReport } from '../components/transaksi/shareReport';
 import { matchesSearch, packageOptions, packageQtyOf } from '../components/transaksi/transactionFilter';
 import { useTransaksiCatalog, useTransactions } from '../hooks/useTransaksiData';
 import { summarizeTransactions } from '../utils/transactions';
+import { depositEntry, isDepositTransaction } from '../utils/deposit';
+import { formatRupiah } from '../utils/format';
 import './Transaksi.css';
 
 const KINDS = [
@@ -32,7 +44,8 @@ const SINGLE_DAY = ['today', 'yesterday', 'day_before'];
  * Transaksi: rekap & daftar transaksi per periode. Data, rekap, dan tahap booking sama dengan Snapme_Desktop
  * (hooks/useTransaksiData, utils/transactions). Tambahan Manager: periode lebih lengkap, grafik waktu sibuk,
  * laporan PDF (Cloud Function), serta pencarian & filter paket (ikut menyaring rekap, seperti filter jenis layanan).
- * Owner (canManage) bisa menambah/mengubah transaksi custom (components/transaksi/customTransaction.js).
+ * Owner (canManage) bisa menambah/mengubah transaksi custom (components/transaksi/customTransaction.js), termasuk
+ * DP & pelunasannya. Transaksi DP (Snapme_Desktop/docs/RENCANA_DP.md): Hapus = Refund (booking.deposits ikut diubah).
  */
 export default function Transaksi({ user, orgId, userMeta, managerId, branches = [], canManage = false }) {
   const toast = useToast();
@@ -45,7 +58,8 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
   const [packageId, setPackageId] = useState(''); // '' = semua paket
   const [expandedId, setExpandedId] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [customForm, setCustomForm] = useState(null); // null = tertutup, { tx } (tx null = transaksi baru)
+  // null = tertutup, { tx } (tx null = transaksi baru), { settle } = pelunasan DP custom
+  const [customForm, setCustomForm] = useState(null);
 
   const range = useMemo(() => periodRange(period, custom), [period, custom]);
   const { transactions, bookings, loading, error } = useTransactions(orgId, range.startDate, range.endDate);
@@ -84,8 +98,75 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
     }
   };
 
+  // Refund DP (atau pulihkan): transaksi DP keluar dari rekap dan entrinya di booking.deposits dihapus, supaya Kasir
+  // tidak memotongnya lagi. DP yang sudah dipakai di pelunasan tidak bisa di-refund dari sini.
+  const toggleDepositRefund = async (tx) => {
+    const restoring = !!tx.isDeleted;
+    const txRef = doc(db, 'organizations', orgId, 'transactions', tx.id);
+    try {
+      const bookingRef = tx.bookingId ? doc(db, 'organizations', orgId, 'bookings', String(tx.bookingId)) : null;
+      const bookingSnap = bookingRef ? await getDoc(bookingRef) : null;
+      const booking = bookingSnap?.exists() ? bookingSnap.data() : null;
+      if (!restoring && (tx.settledBy || booking?.paid)) {
+        toast.warning('DP sudah dipotong saat pelunasan', 'Refund tidak bisa dilakukan untuk DP yang sudah terpakai.');
+        return;
+      }
+      const ok = await confirm(
+        restoring
+          ? {
+              title: 'Batalkan refund DP?',
+              message: 'DP ini dihitung lagi di rekap pendapatan dan dipotong lagi saat pelunasan.',
+              confirmText: 'Pulihkan',
+            }
+          : {
+              title: 'Refund DP?',
+              message: `DP ${formatRupiah(tx.total)} ${tx.customerName || ''} dikeluarkan dari rekap pendapatan${booking ? ' dan tidak dipotong lagi di Kasir' : ''}. Pastikan uangnya sudah dikembalikan ke customer.`,
+              confirmText: 'Refund',
+              destructive: true,
+            },
+      );
+      if (!ok) return;
+      const batch = writeBatch(db);
+      batch.update(
+        txRef,
+        restoring
+          ? { isDeleted: false, refundedAt: deleteField(), refundedBy: deleteField() }
+          : { isDeleted: true, refundedAt: serverTimestamp(), refundedBy: user.email },
+      );
+      if (booking && !booking.paid) {
+        const sameDeposit = (d) => d.transactionId === tx.id || d.transactionNumber === tx.transactionNumber;
+        const deposits = Array.isArray(booking.deposits) ? booking.deposits : [];
+        if (!restoring) batch.update(bookingRef, { deposits: deposits.filter((d) => !sameDeposit(d)) });
+        else if (!deposits.some(sameDeposit)) {
+          const paidAt = tx.createdAt?.toDate ? tx.createdAt.toDate().toISOString() : new Date().toISOString();
+          batch.update(bookingRef, {
+            deposits: arrayUnion(
+              depositEntry({
+                transactionId: tx.id,
+                transactionNumber: tx.transactionNumber,
+                amount: tx.total,
+                paymentMethod: tx.paymentMethod,
+                source: tx.source || 'kasir',
+                paidAt,
+              }),
+            ),
+          });
+        }
+      }
+      await batch.commit();
+      toast.success(restoring ? 'Refund DP dibatalkan' : 'DP di-refund', tx.customerName);
+    } catch (err) {
+      console.error('[Transaksi] Gagal mengubah status DP', err);
+      toast.error('Gagal mengubah status DP', err.message);
+    }
+  };
+
   // Hapus = pindah ke sampah (isDeleted), bisa dipulihkan; sama dengan Desktop
   const handleToggleDeleted = async (tx) => {
+    if (isDepositTransaction(tx)) {
+      await toggleDepositRefund(tx);
+      return;
+    }
     const restoring = !!tx.isDeleted;
     const ok = await confirm(
       restoring
@@ -111,8 +192,11 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
     }
   };
 
-  const handleSaveCustom = async (fields, date) => {
+  // Simpan dari form custom: ubah, transaksi baru, DP baru (kind 'dp'), atau pelunasan DP (transaksi custom baru +
+  // settledBy di transaksi DP, dalam satu batch)
+  const handleSaveCustom = async ({ kind: saveKind, fields }, date) => {
     const editing = customForm?.tx;
+    const settling = customForm?.settle;
     const createdAt = Timestamp.fromDate(createdAtFor(date, new Date(), editing?.createdAt?.toDate?.() || null));
     try {
       if (editing) {
@@ -123,16 +207,29 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
           updatedBy: user.email,
         });
       } else {
-        await addDoc(collection(db, 'organizations', orgId, 'transactions'), {
-          ...fields,
+        const newRef = doc(collection(db, 'organizations', orgId, 'transactions'));
+        const batch = writeBatch(db);
+        batch.set(newRef, {
           transactionNumber: `TRX-${Date.now()}`,
+          ...fields,
           createdAt,
           createdBy: user.uid,
           createdByEmail: user.email,
         });
+        if (settling) {
+          batch.update(doc(db, 'organizations', orgId, 'transactions', settling.id), {
+            settledBy: newRef.id,
+            settledAt: serverTimestamp(),
+          });
+        }
+        await batch.commit();
       }
       const when = createdAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-      toast.success(editing ? 'Transaksi custom diubah' : 'Transaksi custom disimpan', `${fields.customerName} · ${when}`);
+      let title = 'Transaksi custom disimpan';
+      if (editing) title = 'Transaksi custom diubah';
+      else if (settling) title = 'Transaksi custom dilunasi';
+      else if (saveKind === 'dp') title = `DP ${formatRupiah(fields.total)} disimpan`;
+      toast.success(title, `${fields.customerName} · ${when}`);
       setCustomForm(null);
     } catch (err) {
       console.error('[Transaksi] Gagal menyimpan transaksi custom', err);
@@ -246,7 +343,13 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
             {!inTrash && (
               <>
                 <TransactionSummary summary={summary} />
-                {active.length > 0 && <BusyChart transactions={active} baseMode={busyMode} range={range} />}
+                {active.length > 0 && (
+                  <BusyChart
+                    transactions={active.filter((tx) => !isDepositTransaction(tx))}
+                    baseMode={busyMode}
+                    range={range}
+                  />
+                )}
               </>
             )}
 
@@ -281,6 +384,7 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
                     onPrint={handlePrint}
                     onToggleDeleted={handleToggleDeleted}
                     onEdit={canManage ? (t) => setCustomForm({ tx: t }) : undefined}
+                    onSettle={canManage ? (t) => setCustomForm({ tx: null, settle: t }) : undefined}
                   />
                 ))}
               </div>
@@ -293,6 +397,7 @@ export default function Transaksi({ user, orgId, userMeta, managerId, branches =
         <CustomTransactionForm
           orgId={orgId}
           tx={customForm.tx}
+          settle={customForm.settle || null}
           branches={branches}
           managerId={managerId}
           onSave={handleSaveCustom}

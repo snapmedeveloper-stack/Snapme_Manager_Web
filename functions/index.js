@@ -125,7 +125,8 @@ exports.generateReport = functions
       if (filterTab === 'Photobooth' && !isPb) return;
 
       filteredTxs.push({ ...tx, isPb });
-      transactionCount++;
+      // DP (kind 'dp', Snapme_Desktop/docs/RENCANA_DP.md): uangnya ikut pendapatan, tapi bukan transaksi tersendiri
+      if (tx.kind !== 'dp') transactionCount++;
       const txTotal = tx.total || 0;
       totalNominal += txTotal;
 

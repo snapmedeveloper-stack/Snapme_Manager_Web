@@ -130,3 +130,8 @@
 .trx-fee-summary { display: flex; flex-direction: column; gap: var(--space-1); list-style: none; }
 .trx-fee-summary > li { display: flex; justify-content: space-between; gap: var(--space-2); }
 .trx-custom-note { color: var(--text-secondary); white-space: pre-wrap; }
+/* DP (Snapme_Desktop/docs/RENCANA_DP.md): potongan DP di form, ringkasan sisa di kartu */
+.trx-deposit-sum { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; color: var(--text-secondary); }
+.trx-deposit-sum > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.trx-deposit-sum dd { margin: 0; font-weight: var(--fw-medium); color: var(--text-primary); }
+.trx-deposit-sum .is-strong dd { font-weight: var(--fw-semibold); }
